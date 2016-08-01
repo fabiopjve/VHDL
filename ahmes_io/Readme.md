@@ -1,5 +1,5 @@
-Ahmes - An hypothetical 8-bit CPU 
-Implementation on an Altera Cyclone IV FPGA
+#Ahmes - An hypothetical 8-bit CPU 
+#Implementation on an Altera Cyclone IV FPGA
 
 This is the VHDL implementation oh Ahmes, a simple hypothetical 8-bit CPU created by UFRGS Professor Dr. Raul Fernando Weber
 
