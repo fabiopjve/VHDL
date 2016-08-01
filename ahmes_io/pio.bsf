@@ -1,0 +1,57 @@
+/*
+WARNING: Do NOT edit the input and output ports in this file in a text
+editor if you plan to continue editing the block that represents it in
+the Block Editor! File corruption is VERY likely to occur.
+*/
+/*
+Copyright (C) 1991-2010 Altera Corporation
+Your use of Altera Corporation's design tools, logic functions 
+and other software and tools, and its AMPP partner logic 
+functions, and any output files from any of the foregoing 
+(including device programming or simulation files), and any 
+associated documentation or information are expressly subject 
+to the terms and conditions of the Altera Program License 
+Subscription Agreement, Altera MegaCore Function License 
+Agreement, or other applicable license agreement, including, 
+without limitation, that your use is for the sole purpose of 
+programming logic devices manufactured by Altera and sold by 
+Altera or its authorized distributors.  Please refer to the 
+applicable agreement for further details.
+*/
+(header "symbol" (version "1.1"))
+(symbol
+	(rect 64 64 272 168)
+	(text "pio" (rect 5 0 19 12)(font "Arial" ))
+	(text "inst" (rect 8 88 25 100)(font "Arial" ))
+	(port
+		(pt 0 64)
+		(input)
+		(text "address_bus[7..0]" (rect 0 0 88 12)(font "Arial" ))
+		(text "address_bus[7..0]" (rect 21 59 109 71)(font "Arial" ))
+		(line (pt 0 64)(pt 16 64)(line_width 3))
+	)
+	(port
+		(pt 0 32)
+		(input)
+		(text "data_in[7..0]" (rect 0 0 61 12)(font "Arial" ))
+		(text "data_in[7..0]" (rect 21 27 82 39)(font "Arial" ))
+		(line (pt 0 32)(pt 16 32)(line_width 3))
+	)
+	(port
+		(pt 0 48)
+		(input)
+		(text "mem_write" (rect 0 0 53 12)(font "Arial" ))
+		(text "mem_write" (rect 21 43 74 55)(font "Arial" ))
+		(line (pt 0 48)(pt 16 48)(line_width 1))
+	)
+	(port
+		(pt 208 48)
+		(output)
+		(text "out_port[7..0]" (rect 158 88 233 102)(font "Arial" (font_size 8)))
+		(text "out_port[7..0]" (rect 120 40 195 54)(font "Arial" (font_size 8)))
+		(line (pt 208 48)(pt 192 48)(color 128 0 255)(line_width 3))
+	)
+	(drawing
+		(rectangle (rect 16 16 192 88)(line_width 1))
+	)
+)

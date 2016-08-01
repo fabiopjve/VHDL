@@ -1,0 +1,66 @@
+--------------------------------------------------------------------------------------
+Timing Analyzer Summary
+--------------------------------------------------------------------------------------
+
+Type           : Worst-case tsu
+Slack          : N/A
+Required Time  : None
+Actual Time    : 1.968 ns
+From           : RESET
+To             : ahmes:inst|INSTR[5]
+From Clock     : --
+To Clock       : CLOCK
+Failed Paths   : 0
+
+Type           : Worst-case tco
+Slack          : N/A
+Required Time  : None
+Actual Time    : 10.210 ns
+From           : mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg7
+To             : data_in[2]
+From Clock     : CLOCK
+To Clock       : --
+Failed Paths   : 0
+
+Type           : Worst-case th
+Slack          : N/A
+Required Time  : None
+Actual Time    : -0.286 ns
+From           : RESET
+To             : ahmes:inst|ERROR
+From Clock     : --
+To Clock       : CLOCK
+Failed Paths   : 0
+
+Type           : Clock Setup: 'CLOCK'
+Slack          : N/A
+Required Time  : None
+Actual Time    : 62.23 MHz ( period = 16.070 ns )
+From           : ula:inst1|C
+To             : ahmes:inst|PC[6]
+From Clock     : CLOCK
+To Clock       : CLOCK
+Failed Paths   : 0
+
+Type           : Clock Hold: 'CLOCK'
+Slack          : Not operational: Clock Skew > Data Delay
+Required Time  : None
+Actual Time    : N/A
+From           : ahmes:inst|data_out[4]
+To             : pio:inst3|out_port[4]
+From Clock     : CLOCK
+To Clock       : CLOCK
+Failed Paths   : 8
+
+Type           : Total number of failed paths
+Slack          : 
+Required Time  : 
+Actual Time    : 
+From           : 
+To             : 
+From Clock     : 
+To Clock       : 
+Failed Paths   : 8
+
+--------------------------------------------------------------------------------------
+

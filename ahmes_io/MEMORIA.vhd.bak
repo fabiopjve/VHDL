@@ -1,0 +1,81 @@
+LIBRARY ieee ;
+USE ieee.std_logic_1164.all ;
+USE ieee.std_logic_unsigned.all ;
+
+ENTITY memoria IS
+	PORT
+	(
+		address_bus	: IN INTEGER RANGE 0 TO 255;
+		data_in		: IN INTEGER RANGE 0 TO 255;
+		data_out	: OUT INTEGER RANGE 0 TO 255;
+		out_port	: OUT INTEGER RANGE 0 TO 255;
+		mem_write	: IN std_logic;
+		rst			: IN std_logic
+	);
+END memoria;
+
+ARCHITECTURE MEMO OF MEMORIA IS
+constant NOP : INTEGER := 0;
+constant STA : INTEGER := 16;
+constant LDA : INTEGER := 32;
+constant ADD : INTEGER := 48;
+constant IOR : INTEGER := 64;
+constant IAND: INTEGER := 80;
+constant INOT: INTEGER := 96;
+constant SUB : INTEGER := 112;
+constant JMP : INTEGER := 128;
+constant JN  : INTEGER := 144;
+constant JP  : INTEGER := 148;
+constant JV  : INTEGER := 152;
+constant JNV : INTEGER := 156;
+constant JZ  : INTEGER := 160;
+constant JNZ : INTEGER := 164;
+constant JC  : INTEGER := 176;
+constant JNC : INTEGER := 180;
+constant JB  : INTEGER := 184;
+constant JNB : INTEGER := 188;
+constant SHR : INTEGER := 224;
+constant SHL : INTEGER := 225;
+constant IROR: INTEGER := 226;
+constant IROL: INTEGER := 227;
+constant HLT : INTEGER := 240;
+TYPE DATA IS ARRAY (0 TO 255) of integer; 
+BEGIN
+	process (mem_write,rst)
+		VARIABLE DATA_ARRAY: DATA;
+		attribute ram_init_file : string;
+		attribute ram_init_file of DATA_ARRAY: variable is "AHMES.mif";
+	BEGIN
+		IF (RST='1') THEN
+			-- Contador decrescente de 10 (conteúdo do endereço 130) até 0 
+			DATA_ARRAY(0) := LDA;	--32 -- Carrega A com (128)=0
+			DATA_ARRAY(1) := 18;	--18
+			DATA_ARRAY(2) := STA;	--16 -- Guarda A em 255 (out_port)
+			DATA_ARRAY(3) := 255;
+			DATA_ARRAY(4) := LDA; --32
+			DATA_ARRAY(5) := 19; --19
+			DATA_ARRAY(6) := SUB; --112
+			DATA_ARRAY(7) := 20; --20
+			DATA_ARRAY(8) := JNZ; --164
+			DATA_ARRAY(9) := 6;
+			DATA_ARRAY(10):= LDA; --32
+			DATA_ARRAY(11):= 255;
+			DATA_ARRAY(12):= ADD; --48
+			DATA_ARRAY(13):= 20; --20
+			DATA_ARRAY(14):= STA; --16
+			DATA_ARRAY(15):= 255;
+			DATA_ARRAY(16):= JMP; --128
+			DATA_ARRAY(17):= 4;
+			-- Variáveis e constantes utilizadas no programa
+			DATA_ARRAY(18) := 0;
+			DATA_ARRAY(19) := 255;
+			DATA_ARRAY(20) := 1;
+		ELSIF (RISING_EDGE(MEM_WRITE)) THEN
+			DATA_ARRAY(ADDRESS_BUS) := DATA_IN;
+			if (ADDRESS_BUS=255) THEN
+				out_port <= DATA_IN;
+			END IF;
+		END IF;
+		DATA_OUT <= DATA_ARRAY(ADDRESS_BUS);
+	end process;
+END MEMO;

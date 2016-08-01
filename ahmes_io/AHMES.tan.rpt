@@ -1,0 +1,658 @@
+Classic Timing Analyzer report for AHMES
+Sat Jul 23 15:58:45 2016
+Quartus II Version 9.1 Build 350 03/24/2010 Service Pack 2 SJ Web Edition
+
+
+---------------------
+; Table of Contents ;
+---------------------
+  1. Legal Notice
+  2. Timing Analyzer Summary
+  3. Timing Analyzer Settings
+  4. Clock Settings Summary
+  5. Parallel Compilation
+  6. Clock Setup: 'CLOCK'
+  7. Clock Hold: 'CLOCK'
+  8. tsu
+  9. tco
+ 10. th
+ 11. Timing Analyzer Messages
+
+
+
+----------------
+; Legal Notice ;
+----------------
+Copyright (C) 1991-2010 Altera Corporation
+Your use of Altera Corporation's design tools, logic functions 
+and other software and tools, and its AMPP partner logic 
+functions, and any output files from any of the foregoing 
+(including device programming or simulation files), and any 
+associated documentation or information are expressly subject 
+to the terms and conditions of the Altera Program License 
+Subscription Agreement, Altera MegaCore Function License 
+Agreement, or other applicable license agreement, including, 
+without limitation, that your use is for the sole purpose of 
+programming logic devices manufactured by Altera and sold by 
+Altera or its authorized distributors.  Please refer to the 
+applicable agreement for further details.
+
+
+
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Timing Analyzer Summary                                                                                                                                                                                                                                                                                   ;
++------------------------------+------------------------------------------+---------------+----------------------------------+---------------------------------------------------------------------------------------------------------------+-----------------------+------------+----------+--------------+
+; Type                         ; Slack                                    ; Required Time ; Actual Time                      ; From                                                                                                          ; To                    ; From Clock ; To Clock ; Failed Paths ;
++------------------------------+------------------------------------------+---------------+----------------------------------+---------------------------------------------------------------------------------------------------------------+-----------------------+------------+----------+--------------+
+; Worst-case tsu               ; N/A                                      ; None          ; 1.968 ns                         ; RESET                                                                                                         ; ahmes:inst|INSTR[5]   ; --         ; CLOCK    ; 0            ;
+; Worst-case tco               ; N/A                                      ; None          ; 10.210 ns                        ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg7 ; data_in[2]            ; CLOCK      ; --       ; 0            ;
+; Worst-case th                ; N/A                                      ; None          ; -0.286 ns                        ; RESET                                                                                                         ; ahmes:inst|ERROR      ; --         ; CLOCK    ; 0            ;
+; Clock Setup: 'CLOCK'         ; N/A                                      ; None          ; 62.23 MHz ( period = 16.070 ns ) ; ula:inst1|C                                                                                                   ; ahmes:inst|PC[6]      ; CLOCK      ; CLOCK    ; 0            ;
+; Clock Hold: 'CLOCK'          ; Not operational: Clock Skew > Data Delay ; None          ; N/A                              ; ahmes:inst|data_out[4]                                                                                        ; pio:inst3|out_port[4] ; CLOCK      ; CLOCK    ; 8            ;
+; Total number of failed paths ;                                          ;               ;                                  ;                                                                                                               ;                       ;            ;          ; 8            ;
++------------------------------+------------------------------------------+---------------+----------------------------------+---------------------------------------------------------------------------------------------------------------+-----------------------+------------+----------+--------------+
+
+
++-----------------------------------------------------------------------------------------------------------------------------------------------------+
+; Timing Analyzer Settings                                                                                                                            ;
++------------------------------------------------------------------------------------------------------+--------------------+------+----+-------------+
+; Option                                                                                               ; Setting            ; From ; To ; Entity Name ;
++------------------------------------------------------------------------------------------------------+--------------------+------+----+-------------+
+; Device Name                                                                                          ; EP2C5T144C6        ;      ;    ;             ;
+; Timing Models                                                                                        ; Final              ;      ;    ;             ;
+; Default hold multicycle                                                                              ; Same as Multicycle ;      ;    ;             ;
+; Cut paths between unrelated clock domains                                                            ; On                 ;      ;    ;             ;
+; Cut off read during write signal paths                                                               ; On                 ;      ;    ;             ;
+; Cut off feedback from I/O pins                                                                       ; On                 ;      ;    ;             ;
+; Report Combined Fast/Slow Timing                                                                     ; Off                ;      ;    ;             ;
+; Ignore Clock Settings                                                                                ; Off                ;      ;    ;             ;
+; Analyze latches as synchronous elements                                                              ; On                 ;      ;    ;             ;
+; Enable Recovery/Removal analysis                                                                     ; Off                ;      ;    ;             ;
+; Enable Clock Latency                                                                                 ; Off                ;      ;    ;             ;
+; Use TimeQuest Timing Analyzer                                                                        ; Off                ;      ;    ;             ;
+; Number of source nodes to report per destination node                                                ; 10                 ;      ;    ;             ;
+; Number of destination nodes to report                                                                ; 10                 ;      ;    ;             ;
+; Number of paths to report                                                                            ; 200                ;      ;    ;             ;
+; Report Minimum Timing Checks                                                                         ; Off                ;      ;    ;             ;
+; Use Fast Timing Models                                                                               ; Off                ;      ;    ;             ;
+; Report IO Paths Separately                                                                           ; Off                ;      ;    ;             ;
+; Perform Multicorner Analysis                                                                         ; On                 ;      ;    ;             ;
+; Reports the worst-case path for each clock domain and analysis                                       ; Off                ;      ;    ;             ;
+; Reports worst-case timing paths for each clock domain and analysis                                   ; On                 ;      ;    ;             ;
+; Specifies the maximum number of worst-case timing paths to report for each clock domain and analysis ; 100                ;      ;    ;             ;
+; Removes common clock path pessimism (CCPP) during slack computation                                  ; Off                ;      ;    ;             ;
+; Output I/O Timing Endpoint                                                                           ; Near End           ;      ;    ;             ;
++------------------------------------------------------------------------------------------------------+--------------------+------+----+-------------+
+
+
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Clock Settings Summary                                                                                                                                                             ;
++-----------------+--------------------+----------+------------------+---------------+--------------+----------+-----------------------+---------------------+--------+--------------+
+; Clock Node Name ; Clock Setting Name ; Type     ; Fmax Requirement ; Early Latency ; Late Latency ; Based on ; Multiply Base Fmax by ; Divide Base Fmax by ; Offset ; Phase offset ;
++-----------------+--------------------+----------+------------------+---------------+--------------+----------+-----------------------+---------------------+--------+--------------+
+; CLOCK           ;                    ; User Pin ; None             ; 0.000 ns      ; 0.000 ns     ; --       ; N/A                   ; N/A                 ; N/A    ;              ;
++-----------------+--------------------+----------+------------------+---------------+--------------+----------+-----------------------+---------------------+--------+--------------+
+
+
+Parallel compilation was disabled, but you have multiple processors available. Enable parallel compilation to reduce compilation time.
++-------------------------------------+
+; Parallel Compilation                ;
++----------------------------+--------+
+; Processors                 ; Number ;
++----------------------------+--------+
+; Number detected on machine ; 4      ;
+; Maximum allowed            ; 1      ;
++----------------------------+--------+
+
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Clock Setup: 'CLOCK'                                                                                                                                                                                                                                                                                                                                   ;
++-----------------------------------------+-----------------------------------------------------+---------------------------------------------------------------------------------------------------------------+----------------------------+------------+----------+-----------------------------+---------------------------+-------------------------+
+; Slack                                   ; Actual fmax (period)                                ; From                                                                                                          ; To                         ; From Clock ; To Clock ; Required Setup Relationship ; Required Longest P2P Time ; Actual Longest P2P Time ;
++-----------------------------------------+-----------------------------------------------------+---------------------------------------------------------------------------------------------------------------+----------------------------+------------+----------+-----------------------------+---------------------------+-------------------------+
+; N/A                                     ; 62.23 MHz ( period = 16.070 ns )                    ; ula:inst1|C                                                                                                   ; ahmes:inst|PC[2]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 6.185 ns                ;
+; N/A                                     ; 62.23 MHz ( period = 16.070 ns )                    ; ula:inst1|C                                                                                                   ; ahmes:inst|PC[6]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 6.185 ns                ;
+; N/A                                     ; 63.72 MHz ( period = 15.694 ns )                    ; ula:inst1|C                                                                                                   ; ahmes:inst|PC[1]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 6.012 ns                ;
+; N/A                                     ; 63.72 MHz ( period = 15.694 ns )                    ; ula:inst1|C                                                                                                   ; ahmes:inst|PC[3]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 6.012 ns                ;
+; N/A                                     ; 63.72 MHz ( period = 15.694 ns )                    ; ula:inst1|C                                                                                                   ; ahmes:inst|PC[4]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 6.012 ns                ;
+; N/A                                     ; 63.72 MHz ( period = 15.694 ns )                    ; ula:inst1|C                                                                                                   ; ahmes:inst|PC[5]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 6.012 ns                ;
+; N/A                                     ; 63.72 MHz ( period = 15.694 ns )                    ; ula:inst1|C                                                                                                   ; ahmes:inst|PC[7]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 6.012 ns                ;
+; N/A                                     ; 70.51 MHz ( period = 14.182 ns )                    ; ula:inst1|C                                                                                                   ; ahmes:inst|address_bus[7]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 5.248 ns                ;
+; N/A                                     ; 72.72 MHz ( period = 13.752 ns )                    ; ula:inst1|C                                                                                                   ; ahmes:inst|address_bus[0]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 5.034 ns                ;
+; N/A                                     ; 72.72 MHz ( period = 13.752 ns )                    ; ula:inst1|C                                                                                                   ; ahmes:inst|address_bus[1]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 5.034 ns                ;
+; N/A                                     ; 72.72 MHz ( period = 13.752 ns )                    ; ula:inst1|C                                                                                                   ; ahmes:inst|address_bus[2]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 5.034 ns                ;
+; N/A                                     ; 72.72 MHz ( period = 13.752 ns )                    ; ula:inst1|C                                                                                                   ; ahmes:inst|address_bus[3]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 5.034 ns                ;
+; N/A                                     ; 72.72 MHz ( period = 13.752 ns )                    ; ula:inst1|C                                                                                                   ; ahmes:inst|address_bus[4]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 5.034 ns                ;
+; N/A                                     ; 72.72 MHz ( period = 13.752 ns )                    ; ula:inst1|C                                                                                                   ; ahmes:inst|address_bus[5]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 5.034 ns                ;
+; N/A                                     ; 72.72 MHz ( period = 13.752 ns )                    ; ula:inst1|C                                                                                                   ; ahmes:inst|address_bus[6]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 5.034 ns                ;
+; N/A                                     ; 90.71 MHz ( period = 11.024 ns )                    ; ahmes:inst|OPER_A[0]                                                                                          ; ahmes:inst|PC[2]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.807 ns               ;
+; N/A                                     ; 90.71 MHz ( period = 11.024 ns )                    ; ahmes:inst|OPER_A[0]                                                                                          ; ahmes:inst|PC[6]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.807 ns               ;
+; N/A                                     ; 91.32 MHz ( period = 10.951 ns )                    ; ahmes:inst|OPER_A[1]                                                                                          ; ahmes:inst|PC[2]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.734 ns               ;
+; N/A                                     ; 91.32 MHz ( period = 10.951 ns )                    ; ahmes:inst|OPER_A[1]                                                                                          ; ahmes:inst|PC[6]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.734 ns               ;
+; N/A                                     ; 91.43 MHz ( period = 10.937 ns )                    ; ahmes:inst|OPER_B[0]                                                                                          ; ahmes:inst|PC[2]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.721 ns               ;
+; N/A                                     ; 91.43 MHz ( period = 10.937 ns )                    ; ahmes:inst|OPER_B[0]                                                                                          ; ahmes:inst|PC[6]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.721 ns               ;
+; N/A                                     ; 91.85 MHz ( period = 10.887 ns )                    ; ahmes:inst|OPER_A[2]                                                                                          ; ahmes:inst|PC[2]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.670 ns               ;
+; N/A                                     ; 91.85 MHz ( period = 10.887 ns )                    ; ahmes:inst|OPER_A[2]                                                                                          ; ahmes:inst|PC[6]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.670 ns               ;
+; N/A                                     ; 92.01 MHz ( period = 10.868 ns )                    ; ahmes:inst|OPER_B[1]                                                                                          ; ahmes:inst|PC[2]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.652 ns               ;
+; N/A                                     ; 92.01 MHz ( period = 10.868 ns )                    ; ahmes:inst|OPER_B[1]                                                                                          ; ahmes:inst|PC[6]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.652 ns               ;
+; N/A                                     ; 92.28 MHz ( period = 10.836 ns )                    ; ahmes:inst|OPER_A[0]                                                                                          ; ahmes:inst|PC[1]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.634 ns               ;
+; N/A                                     ; 92.28 MHz ( period = 10.836 ns )                    ; ahmes:inst|OPER_A[0]                                                                                          ; ahmes:inst|PC[3]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.634 ns               ;
+; N/A                                     ; 92.28 MHz ( period = 10.836 ns )                    ; ahmes:inst|OPER_A[0]                                                                                          ; ahmes:inst|PC[4]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.634 ns               ;
+; N/A                                     ; 92.28 MHz ( period = 10.836 ns )                    ; ahmes:inst|OPER_A[0]                                                                                          ; ahmes:inst|PC[5]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.634 ns               ;
+; N/A                                     ; 92.28 MHz ( period = 10.836 ns )                    ; ahmes:inst|OPER_A[0]                                                                                          ; ahmes:inst|PC[7]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.634 ns               ;
+; N/A                                     ; 92.54 MHz ( period = 10.806 ns )                    ; ahmes:inst|OPER_B[2]                                                                                          ; ahmes:inst|PC[2]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.590 ns               ;
+; N/A                                     ; 92.54 MHz ( period = 10.806 ns )                    ; ahmes:inst|OPER_B[2]                                                                                          ; ahmes:inst|PC[6]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.590 ns               ;
+; N/A                                     ; 92.71 MHz ( period = 10.786 ns )                    ; ahmes:inst|OPER_A[3]                                                                                          ; ahmes:inst|PC[2]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.569 ns               ;
+; N/A                                     ; 92.71 MHz ( period = 10.786 ns )                    ; ahmes:inst|OPER_A[3]                                                                                          ; ahmes:inst|PC[6]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.569 ns               ;
+; N/A                                     ; 92.91 MHz ( period = 10.763 ns )                    ; ahmes:inst|OPER_A[1]                                                                                          ; ahmes:inst|PC[1]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.561 ns               ;
+; N/A                                     ; 92.91 MHz ( period = 10.763 ns )                    ; ahmes:inst|OPER_A[1]                                                                                          ; ahmes:inst|PC[3]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.561 ns               ;
+; N/A                                     ; 92.91 MHz ( period = 10.763 ns )                    ; ahmes:inst|OPER_A[1]                                                                                          ; ahmes:inst|PC[4]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.561 ns               ;
+; N/A                                     ; 92.91 MHz ( period = 10.763 ns )                    ; ahmes:inst|OPER_A[1]                                                                                          ; ahmes:inst|PC[5]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.561 ns               ;
+; N/A                                     ; 92.91 MHz ( period = 10.763 ns )                    ; ahmes:inst|OPER_A[1]                                                                                          ; ahmes:inst|PC[7]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.561 ns               ;
+; N/A                                     ; 93.03 MHz ( period = 10.749 ns )                    ; ahmes:inst|OPER_B[0]                                                                                          ; ahmes:inst|PC[1]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.548 ns               ;
+; N/A                                     ; 93.03 MHz ( period = 10.749 ns )                    ; ahmes:inst|OPER_B[0]                                                                                          ; ahmes:inst|PC[3]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.548 ns               ;
+; N/A                                     ; 93.03 MHz ( period = 10.749 ns )                    ; ahmes:inst|OPER_B[0]                                                                                          ; ahmes:inst|PC[4]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.548 ns               ;
+; N/A                                     ; 93.03 MHz ( period = 10.749 ns )                    ; ahmes:inst|OPER_B[0]                                                                                          ; ahmes:inst|PC[5]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.548 ns               ;
+; N/A                                     ; 93.03 MHz ( period = 10.749 ns )                    ; ahmes:inst|OPER_B[0]                                                                                          ; ahmes:inst|PC[7]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.548 ns               ;
+; N/A                                     ; 93.11 MHz ( period = 10.740 ns )                    ; ahmes:inst|OPER_A[4]                                                                                          ; ahmes:inst|PC[2]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.523 ns               ;
+; N/A                                     ; 93.11 MHz ( period = 10.740 ns )                    ; ahmes:inst|OPER_A[4]                                                                                          ; ahmes:inst|PC[6]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.523 ns               ;
+; N/A                                     ; 93.47 MHz ( period = 10.699 ns )                    ; ahmes:inst|OPER_A[2]                                                                                          ; ahmes:inst|PC[1]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.497 ns               ;
+; N/A                                     ; 93.47 MHz ( period = 10.699 ns )                    ; ahmes:inst|OPER_A[2]                                                                                          ; ahmes:inst|PC[3]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.497 ns               ;
+; N/A                                     ; 93.47 MHz ( period = 10.699 ns )                    ; ahmes:inst|OPER_A[2]                                                                                          ; ahmes:inst|PC[4]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.497 ns               ;
+; N/A                                     ; 93.47 MHz ( period = 10.699 ns )                    ; ahmes:inst|OPER_A[2]                                                                                          ; ahmes:inst|PC[5]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.497 ns               ;
+; N/A                                     ; 93.47 MHz ( period = 10.699 ns )                    ; ahmes:inst|OPER_A[2]                                                                                          ; ahmes:inst|PC[7]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.497 ns               ;
+; N/A                                     ; 93.61 MHz ( period = 10.683 ns )                    ; ahmes:inst|OPERACAO[1]                                                                                        ; ahmes:inst|PC[2]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.481 ns               ;
+; N/A                                     ; 93.61 MHz ( period = 10.683 ns )                    ; ahmes:inst|OPERACAO[1]                                                                                        ; ahmes:inst|PC[6]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.481 ns               ;
+; N/A                                     ; 93.63 MHz ( period = 10.680 ns )                    ; ahmes:inst|OPER_B[1]                                                                                          ; ahmes:inst|PC[1]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.479 ns               ;
+; N/A                                     ; 93.63 MHz ( period = 10.680 ns )                    ; ahmes:inst|OPER_B[1]                                                                                          ; ahmes:inst|PC[3]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.479 ns               ;
+; N/A                                     ; 93.63 MHz ( period = 10.680 ns )                    ; ahmes:inst|OPER_B[1]                                                                                          ; ahmes:inst|PC[4]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.479 ns               ;
+; N/A                                     ; 93.63 MHz ( period = 10.680 ns )                    ; ahmes:inst|OPER_B[1]                                                                                          ; ahmes:inst|PC[5]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.479 ns               ;
+; N/A                                     ; 93.63 MHz ( period = 10.680 ns )                    ; ahmes:inst|OPER_B[1]                                                                                          ; ahmes:inst|PC[7]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.479 ns               ;
+; N/A                                     ; 93.93 MHz ( period = 10.646 ns )                    ; ahmes:inst|OPER_A[5]                                                                                          ; ahmes:inst|PC[2]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.429 ns               ;
+; N/A                                     ; 93.93 MHz ( period = 10.646 ns )                    ; ahmes:inst|OPER_A[5]                                                                                          ; ahmes:inst|PC[6]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.429 ns               ;
+; N/A                                     ; 93.94 MHz ( period = 10.645 ns )                    ; ahmes:inst|OPER_B[5]                                                                                          ; ahmes:inst|PC[2]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.429 ns               ;
+; N/A                                     ; 93.94 MHz ( period = 10.645 ns )                    ; ahmes:inst|OPER_B[5]                                                                                          ; ahmes:inst|PC[6]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.429 ns               ;
+; N/A                                     ; 94.18 MHz ( period = 10.618 ns )                    ; ahmes:inst|OPER_B[2]                                                                                          ; ahmes:inst|PC[1]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.417 ns               ;
+; N/A                                     ; 94.18 MHz ( period = 10.618 ns )                    ; ahmes:inst|OPER_B[2]                                                                                          ; ahmes:inst|PC[3]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.417 ns               ;
+; N/A                                     ; 94.18 MHz ( period = 10.618 ns )                    ; ahmes:inst|OPER_B[2]                                                                                          ; ahmes:inst|PC[4]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.417 ns               ;
+; N/A                                     ; 94.18 MHz ( period = 10.618 ns )                    ; ahmes:inst|OPER_B[2]                                                                                          ; ahmes:inst|PC[5]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.417 ns               ;
+; N/A                                     ; 94.18 MHz ( period = 10.618 ns )                    ; ahmes:inst|OPER_B[2]                                                                                          ; ahmes:inst|PC[7]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.417 ns               ;
+; N/A                                     ; 94.36 MHz ( period = 10.598 ns )                    ; ahmes:inst|OPER_A[3]                                                                                          ; ahmes:inst|PC[1]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.396 ns               ;
+; N/A                                     ; 94.36 MHz ( period = 10.598 ns )                    ; ahmes:inst|OPER_A[3]                                                                                          ; ahmes:inst|PC[3]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.396 ns               ;
+; N/A                                     ; 94.36 MHz ( period = 10.598 ns )                    ; ahmes:inst|OPER_A[3]                                                                                          ; ahmes:inst|PC[4]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.396 ns               ;
+; N/A                                     ; 94.36 MHz ( period = 10.598 ns )                    ; ahmes:inst|OPER_A[3]                                                                                          ; ahmes:inst|PC[5]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.396 ns               ;
+; N/A                                     ; 94.36 MHz ( period = 10.598 ns )                    ; ahmes:inst|OPER_A[3]                                                                                          ; ahmes:inst|PC[7]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.396 ns               ;
+; N/A                                     ; 94.46 MHz ( period = 10.587 ns )                    ; ahmes:inst|OPER_B[3]                                                                                          ; ahmes:inst|PC[2]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.371 ns               ;
+; N/A                                     ; 94.46 MHz ( period = 10.587 ns )                    ; ahmes:inst|OPER_B[3]                                                                                          ; ahmes:inst|PC[6]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.371 ns               ;
+; N/A                                     ; 94.49 MHz ( period = 10.583 ns )                    ; ahmes:inst|OPERACAO[2]                                                                                        ; ahmes:inst|PC[2]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.381 ns               ;
+; N/A                                     ; 94.49 MHz ( period = 10.583 ns )                    ; ahmes:inst|OPERACAO[2]                                                                                        ; ahmes:inst|PC[6]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.381 ns               ;
+; N/A                                     ; 94.77 MHz ( period = 10.552 ns )                    ; ahmes:inst|OPER_A[4]                                                                                          ; ahmes:inst|PC[1]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.350 ns               ;
+; N/A                                     ; 94.77 MHz ( period = 10.552 ns )                    ; ahmes:inst|OPER_A[4]                                                                                          ; ahmes:inst|PC[3]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.350 ns               ;
+; N/A                                     ; 94.77 MHz ( period = 10.552 ns )                    ; ahmes:inst|OPER_A[4]                                                                                          ; ahmes:inst|PC[4]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.350 ns               ;
+; N/A                                     ; 94.77 MHz ( period = 10.552 ns )                    ; ahmes:inst|OPER_A[4]                                                                                          ; ahmes:inst|PC[5]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.350 ns               ;
+; N/A                                     ; 94.77 MHz ( period = 10.552 ns )                    ; ahmes:inst|OPER_A[4]                                                                                          ; ahmes:inst|PC[7]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.350 ns               ;
+; N/A                                     ; 95.28 MHz ( period = 10.495 ns )                    ; ahmes:inst|OPERACAO[1]                                                                                        ; ahmes:inst|PC[1]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.308 ns               ;
+; N/A                                     ; 95.28 MHz ( period = 10.495 ns )                    ; ahmes:inst|OPERACAO[1]                                                                                        ; ahmes:inst|PC[3]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.308 ns               ;
+; N/A                                     ; 95.28 MHz ( period = 10.495 ns )                    ; ahmes:inst|OPERACAO[1]                                                                                        ; ahmes:inst|PC[4]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.308 ns               ;
+; N/A                                     ; 95.28 MHz ( period = 10.495 ns )                    ; ahmes:inst|OPERACAO[1]                                                                                        ; ahmes:inst|PC[5]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.308 ns               ;
+; N/A                                     ; 95.28 MHz ( period = 10.495 ns )                    ; ahmes:inst|OPERACAO[1]                                                                                        ; ahmes:inst|PC[7]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.308 ns               ;
+; N/A                                     ; 95.36 MHz ( period = 10.487 ns )                    ; ahmes:inst|OPER_B[4]                                                                                          ; ahmes:inst|PC[2]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.271 ns               ;
+; N/A                                     ; 95.36 MHz ( period = 10.487 ns )                    ; ahmes:inst|OPER_B[4]                                                                                          ; ahmes:inst|PC[6]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.271 ns               ;
+; N/A                                     ; 95.62 MHz ( period = 10.458 ns )                    ; ahmes:inst|OPER_A[5]                                                                                          ; ahmes:inst|PC[1]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.256 ns               ;
+; N/A                                     ; 95.62 MHz ( period = 10.458 ns )                    ; ahmes:inst|OPER_A[5]                                                                                          ; ahmes:inst|PC[3]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.256 ns               ;
+; N/A                                     ; 95.62 MHz ( period = 10.458 ns )                    ; ahmes:inst|OPER_A[5]                                                                                          ; ahmes:inst|PC[4]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.256 ns               ;
+; N/A                                     ; 95.62 MHz ( period = 10.458 ns )                    ; ahmes:inst|OPER_A[5]                                                                                          ; ahmes:inst|PC[5]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.256 ns               ;
+; N/A                                     ; 95.62 MHz ( period = 10.458 ns )                    ; ahmes:inst|OPER_A[5]                                                                                          ; ahmes:inst|PC[7]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.256 ns               ;
+; N/A                                     ; 95.63 MHz ( period = 10.457 ns )                    ; ahmes:inst|OPER_B[5]                                                                                          ; ahmes:inst|PC[1]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.256 ns               ;
+; N/A                                     ; 95.63 MHz ( period = 10.457 ns )                    ; ahmes:inst|OPER_B[5]                                                                                          ; ahmes:inst|PC[3]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.256 ns               ;
+; N/A                                     ; 95.63 MHz ( period = 10.457 ns )                    ; ahmes:inst|OPER_B[5]                                                                                          ; ahmes:inst|PC[4]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.256 ns               ;
+; N/A                                     ; 95.63 MHz ( period = 10.457 ns )                    ; ahmes:inst|OPER_B[5]                                                                                          ; ahmes:inst|PC[5]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.256 ns               ;
+; N/A                                     ; 95.63 MHz ( period = 10.457 ns )                    ; ahmes:inst|OPER_B[5]                                                                                          ; ahmes:inst|PC[7]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.256 ns               ;
+; N/A                                     ; 96.16 MHz ( period = 10.399 ns )                    ; ahmes:inst|OPER_B[3]                                                                                          ; ahmes:inst|PC[1]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.198 ns               ;
+; N/A                                     ; 96.16 MHz ( period = 10.399 ns )                    ; ahmes:inst|OPER_B[3]                                                                                          ; ahmes:inst|PC[3]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.198 ns               ;
+; N/A                                     ; 96.16 MHz ( period = 10.399 ns )                    ; ahmes:inst|OPER_B[3]                                                                                          ; ahmes:inst|PC[4]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.198 ns               ;
+; N/A                                     ; 96.16 MHz ( period = 10.399 ns )                    ; ahmes:inst|OPER_B[3]                                                                                          ; ahmes:inst|PC[5]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.198 ns               ;
+; N/A                                     ; 96.16 MHz ( period = 10.399 ns )                    ; ahmes:inst|OPER_B[3]                                                                                          ; ahmes:inst|PC[7]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.198 ns               ;
+; N/A                                     ; 96.20 MHz ( period = 10.395 ns )                    ; ahmes:inst|OPERACAO[2]                                                                                        ; ahmes:inst|PC[1]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.208 ns               ;
+; N/A                                     ; 96.20 MHz ( period = 10.395 ns )                    ; ahmes:inst|OPERACAO[0]                                                                                        ; ahmes:inst|PC[2]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.193 ns               ;
+; N/A                                     ; 96.20 MHz ( period = 10.395 ns )                    ; ahmes:inst|OPERACAO[2]                                                                                        ; ahmes:inst|PC[3]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.208 ns               ;
+; N/A                                     ; 96.20 MHz ( period = 10.395 ns )                    ; ahmes:inst|OPERACAO[2]                                                                                        ; ahmes:inst|PC[4]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.208 ns               ;
+; N/A                                     ; 96.20 MHz ( period = 10.395 ns )                    ; ahmes:inst|OPERACAO[2]                                                                                        ; ahmes:inst|PC[5]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.208 ns               ;
+; N/A                                     ; 96.20 MHz ( period = 10.395 ns )                    ; ahmes:inst|OPERACAO[0]                                                                                        ; ahmes:inst|PC[6]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.193 ns               ;
+; N/A                                     ; 96.20 MHz ( period = 10.395 ns )                    ; ahmes:inst|OPERACAO[2]                                                                                        ; ahmes:inst|PC[7]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.208 ns               ;
+; N/A                                     ; 97.10 MHz ( period = 10.299 ns )                    ; ahmes:inst|OPER_B[4]                                                                                          ; ahmes:inst|PC[1]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.098 ns               ;
+; N/A                                     ; 97.10 MHz ( period = 10.299 ns )                    ; ahmes:inst|OPER_B[4]                                                                                          ; ahmes:inst|PC[3]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.098 ns               ;
+; N/A                                     ; 97.10 MHz ( period = 10.299 ns )                    ; ahmes:inst|OPER_B[4]                                                                                          ; ahmes:inst|PC[4]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.098 ns               ;
+; N/A                                     ; 97.10 MHz ( period = 10.299 ns )                    ; ahmes:inst|OPER_B[4]                                                                                          ; ahmes:inst|PC[5]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.098 ns               ;
+; N/A                                     ; 97.10 MHz ( period = 10.299 ns )                    ; ahmes:inst|OPER_B[4]                                                                                          ; ahmes:inst|PC[7]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.098 ns               ;
+; N/A                                     ; 97.97 MHz ( period = 10.207 ns )                    ; ahmes:inst|OPERACAO[0]                                                                                        ; ahmes:inst|PC[1]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.020 ns               ;
+; N/A                                     ; 97.97 MHz ( period = 10.207 ns )                    ; ahmes:inst|OPERACAO[0]                                                                                        ; ahmes:inst|PC[3]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.020 ns               ;
+; N/A                                     ; 97.97 MHz ( period = 10.207 ns )                    ; ahmes:inst|OPERACAO[0]                                                                                        ; ahmes:inst|PC[4]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.020 ns               ;
+; N/A                                     ; 97.97 MHz ( period = 10.207 ns )                    ; ahmes:inst|OPERACAO[0]                                                                                        ; ahmes:inst|PC[5]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.020 ns               ;
+; N/A                                     ; 97.97 MHz ( period = 10.207 ns )                    ; ahmes:inst|OPERACAO[0]                                                                                        ; ahmes:inst|PC[7]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 10.020 ns               ;
+; N/A                                     ; 98.33 MHz ( period = 10.170 ns )                    ; ahmes:inst|OPER_A[6]                                                                                          ; ahmes:inst|PC[2]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.953 ns                ;
+; N/A                                     ; 98.33 MHz ( period = 10.170 ns )                    ; ahmes:inst|OPER_A[6]                                                                                          ; ahmes:inst|PC[6]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.953 ns                ;
+; N/A                                     ; 99.21 MHz ( period = 10.080 ns )                    ; ahmes:inst|OPER_A[0]                                                                                          ; ahmes:inst|address_bus[7]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.870 ns                ;
+; N/A                                     ; 99.64 MHz ( period = 10.036 ns )                    ; ula:inst1|C                                                                                                   ; ahmes:inst|CPU_STATE.BUSCA ; CLOCK      ; CLOCK    ; None                        ; None                      ; 3.168 ns                ;
+; N/A                                     ; 99.93 MHz ( period = 10.007 ns )                    ; ahmes:inst|OPER_A[1]                                                                                          ; ahmes:inst|address_bus[7]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.797 ns                ;
+; N/A                                     ; 100.07 MHz ( period = 9.993 ns )                    ; ahmes:inst|OPER_B[0]                                                                                          ; ahmes:inst|address_bus[7]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.784 ns                ;
+; N/A                                     ; 100.18 MHz ( period = 9.982 ns )                    ; ahmes:inst|OPER_A[6]                                                                                          ; ahmes:inst|PC[1]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.780 ns                ;
+; N/A                                     ; 100.18 MHz ( period = 9.982 ns )                    ; ahmes:inst|OPER_A[6]                                                                                          ; ahmes:inst|PC[3]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.780 ns                ;
+; N/A                                     ; 100.18 MHz ( period = 9.982 ns )                    ; ahmes:inst|OPER_A[6]                                                                                          ; ahmes:inst|PC[4]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.780 ns                ;
+; N/A                                     ; 100.18 MHz ( period = 9.982 ns )                    ; ahmes:inst|OPER_A[6]                                                                                          ; ahmes:inst|PC[5]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.780 ns                ;
+; N/A                                     ; 100.18 MHz ( period = 9.982 ns )                    ; ahmes:inst|OPER_A[6]                                                                                          ; ahmes:inst|PC[7]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.780 ns                ;
+; N/A                                     ; 100.38 MHz ( period = 9.962 ns )                    ; ahmes:inst|OPER_B[6]                                                                                          ; ahmes:inst|PC[2]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.746 ns                ;
+; N/A                                     ; 100.38 MHz ( period = 9.962 ns )                    ; ahmes:inst|OPER_B[6]                                                                                          ; ahmes:inst|PC[6]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.746 ns                ;
+; N/A                                     ; 100.57 MHz ( period = 9.943 ns )                    ; ahmes:inst|OPER_A[2]                                                                                          ; ahmes:inst|address_bus[7]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.733 ns                ;
+; N/A                                     ; 100.75 MHz ( period = 9.926 ns )                    ; ahmes:inst|OPERACAO[3]                                                                                        ; ahmes:inst|PC[2]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.724 ns                ;
+; N/A                                     ; 100.75 MHz ( period = 9.926 ns )                    ; ahmes:inst|OPERACAO[3]                                                                                        ; ahmes:inst|PC[6]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.724 ns                ;
+; N/A                                     ; 100.77 MHz ( period = 9.924 ns )                    ; ahmes:inst|OPER_B[1]                                                                                          ; ahmes:inst|address_bus[7]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.715 ns                ;
+; N/A                                     ; 101.37 MHz ( period = 9.865 ns )                    ; ahmes:inst|OPER_A[0]                                                                                          ; ahmes:inst|address_bus[0]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.656 ns                ;
+; N/A                                     ; 101.37 MHz ( period = 9.865 ns )                    ; ahmes:inst|OPER_A[0]                                                                                          ; ahmes:inst|address_bus[1]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.656 ns                ;
+; N/A                                     ; 101.37 MHz ( period = 9.865 ns )                    ; ahmes:inst|OPER_A[0]                                                                                          ; ahmes:inst|address_bus[2]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.656 ns                ;
+; N/A                                     ; 101.37 MHz ( period = 9.865 ns )                    ; ahmes:inst|OPER_A[0]                                                                                          ; ahmes:inst|address_bus[3]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.656 ns                ;
+; N/A                                     ; 101.37 MHz ( period = 9.865 ns )                    ; ahmes:inst|OPER_A[0]                                                                                          ; ahmes:inst|address_bus[4]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.656 ns                ;
+; N/A                                     ; 101.37 MHz ( period = 9.865 ns )                    ; ahmes:inst|OPER_A[0]                                                                                          ; ahmes:inst|address_bus[5]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.656 ns                ;
+; N/A                                     ; 101.37 MHz ( period = 9.865 ns )                    ; ahmes:inst|OPER_A[0]                                                                                          ; ahmes:inst|address_bus[6]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.656 ns                ;
+; N/A                                     ; 101.40 MHz ( period = 9.862 ns )                    ; ahmes:inst|OPER_B[2]                                                                                          ; ahmes:inst|address_bus[7]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.653 ns                ;
+; N/A                                     ; 101.61 MHz ( period = 9.842 ns )                    ; ahmes:inst|OPER_A[3]                                                                                          ; ahmes:inst|address_bus[7]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.632 ns                ;
+; N/A                                     ; 102.08 MHz ( period = 9.796 ns )                    ; ahmes:inst|OPER_A[4]                                                                                          ; ahmes:inst|address_bus[7]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.586 ns                ;
+; N/A                                     ; 102.12 MHz ( period = 9.792 ns )                    ; ahmes:inst|OPER_A[1]                                                                                          ; ahmes:inst|address_bus[0]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.583 ns                ;
+; N/A                                     ; 102.12 MHz ( period = 9.792 ns )                    ; ahmes:inst|OPER_A[1]                                                                                          ; ahmes:inst|address_bus[1]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.583 ns                ;
+; N/A                                     ; 102.12 MHz ( period = 9.792 ns )                    ; ahmes:inst|OPER_A[1]                                                                                          ; ahmes:inst|address_bus[2]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.583 ns                ;
+; N/A                                     ; 102.12 MHz ( period = 9.792 ns )                    ; ahmes:inst|OPER_A[1]                                                                                          ; ahmes:inst|address_bus[3]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.583 ns                ;
+; N/A                                     ; 102.12 MHz ( period = 9.792 ns )                    ; ahmes:inst|OPER_A[1]                                                                                          ; ahmes:inst|address_bus[4]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.583 ns                ;
+; N/A                                     ; 102.12 MHz ( period = 9.792 ns )                    ; ahmes:inst|OPER_A[1]                                                                                          ; ahmes:inst|address_bus[5]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.583 ns                ;
+; N/A                                     ; 102.12 MHz ( period = 9.792 ns )                    ; ahmes:inst|OPER_A[1]                                                                                          ; ahmes:inst|address_bus[6]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.583 ns                ;
+; N/A                                     ; 102.27 MHz ( period = 9.778 ns )                    ; ahmes:inst|OPER_B[0]                                                                                          ; ahmes:inst|address_bus[0]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.570 ns                ;
+; N/A                                     ; 102.27 MHz ( period = 9.778 ns )                    ; ahmes:inst|OPER_B[0]                                                                                          ; ahmes:inst|address_bus[1]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.570 ns                ;
+; N/A                                     ; 102.27 MHz ( period = 9.778 ns )                    ; ahmes:inst|OPER_B[0]                                                                                          ; ahmes:inst|address_bus[2]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.570 ns                ;
+; N/A                                     ; 102.27 MHz ( period = 9.778 ns )                    ; ahmes:inst|OPER_B[0]                                                                                          ; ahmes:inst|address_bus[3]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.570 ns                ;
+; N/A                                     ; 102.27 MHz ( period = 9.778 ns )                    ; ahmes:inst|OPER_B[0]                                                                                          ; ahmes:inst|address_bus[4]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.570 ns                ;
+; N/A                                     ; 102.27 MHz ( period = 9.778 ns )                    ; ahmes:inst|OPER_B[0]                                                                                          ; ahmes:inst|address_bus[5]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.570 ns                ;
+; N/A                                     ; 102.27 MHz ( period = 9.778 ns )                    ; ahmes:inst|OPER_B[0]                                                                                          ; ahmes:inst|address_bus[6]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.570 ns                ;
+; N/A                                     ; 102.31 MHz ( period = 9.774 ns )                    ; ahmes:inst|OPER_B[6]                                                                                          ; ahmes:inst|PC[1]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.573 ns                ;
+; N/A                                     ; 102.31 MHz ( period = 9.774 ns )                    ; ahmes:inst|OPER_B[6]                                                                                          ; ahmes:inst|PC[3]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.573 ns                ;
+; N/A                                     ; 102.31 MHz ( period = 9.774 ns )                    ; ahmes:inst|OPER_B[6]                                                                                          ; ahmes:inst|PC[4]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.573 ns                ;
+; N/A                                     ; 102.31 MHz ( period = 9.774 ns )                    ; ahmes:inst|OPER_B[6]                                                                                          ; ahmes:inst|PC[5]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.573 ns                ;
+; N/A                                     ; 102.31 MHz ( period = 9.774 ns )                    ; ahmes:inst|OPER_B[6]                                                                                          ; ahmes:inst|PC[7]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.573 ns                ;
+; N/A                                     ; 102.68 MHz ( period = 9.739 ns )                    ; ahmes:inst|OPERACAO[1]                                                                                        ; ahmes:inst|address_bus[7]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.544 ns                ;
+; N/A                                     ; 102.69 MHz ( period = 9.738 ns )                    ; ahmes:inst|OPERACAO[3]                                                                                        ; ahmes:inst|PC[1]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.551 ns                ;
+; N/A                                     ; 102.69 MHz ( period = 9.738 ns )                    ; ahmes:inst|OPERACAO[3]                                                                                        ; ahmes:inst|PC[3]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.551 ns                ;
+; N/A                                     ; 102.69 MHz ( period = 9.738 ns )                    ; ahmes:inst|OPERACAO[3]                                                                                        ; ahmes:inst|PC[4]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.551 ns                ;
+; N/A                                     ; 102.69 MHz ( period = 9.738 ns )                    ; ahmes:inst|OPERACAO[3]                                                                                        ; ahmes:inst|PC[5]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.551 ns                ;
+; N/A                                     ; 102.69 MHz ( period = 9.738 ns )                    ; ahmes:inst|OPERACAO[3]                                                                                        ; ahmes:inst|PC[7]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.551 ns                ;
+; N/A                                     ; 102.80 MHz ( period = 9.728 ns )                    ; ahmes:inst|OPER_A[2]                                                                                          ; ahmes:inst|address_bus[0]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.519 ns                ;
+; N/A                                     ; 102.80 MHz ( period = 9.728 ns )                    ; ahmes:inst|OPER_A[2]                                                                                          ; ahmes:inst|address_bus[1]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.519 ns                ;
+; N/A                                     ; 102.80 MHz ( period = 9.728 ns )                    ; ahmes:inst|OPER_A[2]                                                                                          ; ahmes:inst|address_bus[2]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.519 ns                ;
+; N/A                                     ; 102.80 MHz ( period = 9.728 ns )                    ; ahmes:inst|OPER_A[2]                                                                                          ; ahmes:inst|address_bus[3]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.519 ns                ;
+; N/A                                     ; 102.80 MHz ( period = 9.728 ns )                    ; ahmes:inst|OPER_A[2]                                                                                          ; ahmes:inst|address_bus[4]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.519 ns                ;
+; N/A                                     ; 102.80 MHz ( period = 9.728 ns )                    ; ahmes:inst|OPER_A[2]                                                                                          ; ahmes:inst|address_bus[5]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.519 ns                ;
+; N/A                                     ; 102.80 MHz ( period = 9.728 ns )                    ; ahmes:inst|OPER_A[2]                                                                                          ; ahmes:inst|address_bus[6]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.519 ns                ;
+; N/A                                     ; 103.00 MHz ( period = 9.709 ns )                    ; ahmes:inst|OPER_B[1]                                                                                          ; ahmes:inst|address_bus[0]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.501 ns                ;
+; N/A                                     ; 103.00 MHz ( period = 9.709 ns )                    ; ahmes:inst|OPER_B[1]                                                                                          ; ahmes:inst|address_bus[1]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.501 ns                ;
+; N/A                                     ; 103.00 MHz ( period = 9.709 ns )                    ; ahmes:inst|OPER_B[1]                                                                                          ; ahmes:inst|address_bus[2]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.501 ns                ;
+; N/A                                     ; 103.00 MHz ( period = 9.709 ns )                    ; ahmes:inst|OPER_B[1]                                                                                          ; ahmes:inst|address_bus[3]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.501 ns                ;
+; N/A                                     ; 103.00 MHz ( period = 9.709 ns )                    ; ahmes:inst|OPER_B[1]                                                                                          ; ahmes:inst|address_bus[4]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.501 ns                ;
+; N/A                                     ; 103.00 MHz ( period = 9.709 ns )                    ; ahmes:inst|OPER_B[1]                                                                                          ; ahmes:inst|address_bus[5]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.501 ns                ;
+; N/A                                     ; 103.00 MHz ( period = 9.709 ns )                    ; ahmes:inst|OPER_B[1]                                                                                          ; ahmes:inst|address_bus[6]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.501 ns                ;
+; N/A                                     ; 103.01 MHz ( period = 9.708 ns )                    ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_we_reg       ; ahmes:inst|PC[0]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 4.633 ns                ;
+; N/A                                     ; 103.01 MHz ( period = 9.708 ns )                    ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg0 ; ahmes:inst|PC[0]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 4.633 ns                ;
+; N/A                                     ; 103.01 MHz ( period = 9.708 ns )                    ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg1 ; ahmes:inst|PC[0]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 4.633 ns                ;
+; N/A                                     ; 103.01 MHz ( period = 9.708 ns )                    ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg2 ; ahmes:inst|PC[0]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 4.633 ns                ;
+; N/A                                     ; 103.01 MHz ( period = 9.708 ns )                    ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg3 ; ahmes:inst|PC[0]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 4.633 ns                ;
+; N/A                                     ; 103.01 MHz ( period = 9.708 ns )                    ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg4 ; ahmes:inst|PC[0]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 4.633 ns                ;
+; N/A                                     ; 103.01 MHz ( period = 9.708 ns )                    ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg5 ; ahmes:inst|PC[0]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 4.633 ns                ;
+; N/A                                     ; 103.01 MHz ( period = 9.708 ns )                    ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg6 ; ahmes:inst|PC[0]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 4.633 ns                ;
+; N/A                                     ; 103.01 MHz ( period = 9.708 ns )                    ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg7 ; ahmes:inst|PC[0]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 4.633 ns                ;
+; N/A                                     ; 103.07 MHz ( period = 9.702 ns )                    ; ahmes:inst|OPER_A[5]                                                                                          ; ahmes:inst|address_bus[7]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.492 ns                ;
+; N/A                                     ; 103.08 MHz ( period = 9.701 ns )                    ; ahmes:inst|OPER_B[5]                                                                                          ; ahmes:inst|address_bus[7]  ; CLOCK      ; CLOCK    ; None                        ; None                      ; 9.492 ns                ;
+; N/A                                     ; 103.18 MHz ( period = 9.692 ns )                    ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg4 ; ahmes:inst|PC[4]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 4.618 ns                ;
+; N/A                                     ; 103.18 MHz ( period = 9.692 ns )                    ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg5 ; ahmes:inst|PC[4]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 4.618 ns                ;
+; N/A                                     ; 103.18 MHz ( period = 9.692 ns )                    ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg6 ; ahmes:inst|PC[4]           ; CLOCK      ; CLOCK    ; None                        ; None                      ; 4.618 ns                ;
+; Timing analysis restricted to 200 rows. ; To change the limit use Settings (Assignments menu) ;                                                                                                               ;                            ;            ;          ;                             ;                           ;                         ;
++-----------------------------------------+-----------------------------------------------------+---------------------------------------------------------------------------------------------------------------+----------------------------+------------+----------+-----------------------------+---------------------------+-------------------------+
+
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Clock Hold: 'CLOCK'                                                                                                                                                                                    ;
++------------------------------------------+------------------------+-----------------------+------------+----------+----------------------------+----------------------------+--------------------------+
+; Minimum Slack                            ; From                   ; To                    ; From Clock ; To Clock ; Required Hold Relationship ; Required Shortest P2P Time ; Actual Shortest P2P Time ;
++------------------------------------------+------------------------+-----------------------+------------+----------+----------------------------+----------------------------+--------------------------+
+; Not operational: Clock Skew > Data Delay ; ahmes:inst|data_out[4] ; pio:inst3|out_port[4] ; CLOCK      ; CLOCK    ; None                       ; None                       ; 1.311 ns                 ;
+; Not operational: Clock Skew > Data Delay ; ahmes:inst|data_out[5] ; pio:inst3|out_port[5] ; CLOCK      ; CLOCK    ; None                       ; None                       ; 1.312 ns                 ;
+; Not operational: Clock Skew > Data Delay ; ahmes:inst|data_out[0] ; pio:inst3|out_port[0] ; CLOCK      ; CLOCK    ; None                       ; None                       ; 1.314 ns                 ;
+; Not operational: Clock Skew > Data Delay ; ahmes:inst|data_out[3] ; pio:inst3|out_port[3] ; CLOCK      ; CLOCK    ; None                       ; None                       ; 1.324 ns                 ;
+; Not operational: Clock Skew > Data Delay ; ahmes:inst|data_out[1] ; pio:inst3|out_port[1] ; CLOCK      ; CLOCK    ; None                       ; None                       ; 1.451 ns                 ;
+; Not operational: Clock Skew > Data Delay ; ahmes:inst|data_out[6] ; pio:inst3|out_port[6] ; CLOCK      ; CLOCK    ; None                       ; None                       ; 1.455 ns                 ;
+; Not operational: Clock Skew > Data Delay ; ahmes:inst|data_out[7] ; pio:inst3|out_port[7] ; CLOCK      ; CLOCK    ; None                       ; None                       ; 1.456 ns                 ;
+; Not operational: Clock Skew > Data Delay ; ahmes:inst|data_out[2] ; pio:inst3|out_port[2] ; CLOCK      ; CLOCK    ; None                       ; None                       ; 1.458 ns                 ;
++------------------------------------------+------------------------+-----------------------+------------+----------+----------------------------+----------------------------+--------------------------+
+
+
++-----------------------------------------------------------------------------+
+; tsu                                                                         ;
++-------+--------------+------------+-------+----------------------+----------+
+; Slack ; Required tsu ; Actual tsu ; From  ; To                   ; To Clock ;
++-------+--------------+------------+-------+----------------------+----------+
+; N/A   ; None         ; 1.968 ns   ; RESET ; ahmes:inst|INSTR[3]  ; CLOCK    ;
+; N/A   ; None         ; 1.968 ns   ; RESET ; ahmes:inst|INSTR[2]  ; CLOCK    ;
+; N/A   ; None         ; 1.968 ns   ; RESET ; ahmes:inst|INSTR[1]  ; CLOCK    ;
+; N/A   ; None         ; 1.968 ns   ; RESET ; ahmes:inst|INSTR[5]  ; CLOCK    ;
+; N/A   ; None         ; 1.706 ns   ; RESET ; ahmes:inst|INSTR[0]  ; CLOCK    ;
+; N/A   ; None         ; 1.677 ns   ; RESET ; ahmes:inst|TEMP[0]   ; CLOCK    ;
+; N/A   ; None         ; 1.677 ns   ; RESET ; ahmes:inst|TEMP[1]   ; CLOCK    ;
+; N/A   ; None         ; 1.677 ns   ; RESET ; ahmes:inst|TEMP[2]   ; CLOCK    ;
+; N/A   ; None         ; 1.677 ns   ; RESET ; ahmes:inst|TEMP[3]   ; CLOCK    ;
+; N/A   ; None         ; 1.677 ns   ; RESET ; ahmes:inst|TEMP[4]   ; CLOCK    ;
+; N/A   ; None         ; 1.677 ns   ; RESET ; ahmes:inst|TEMP[5]   ; CLOCK    ;
+; N/A   ; None         ; 1.677 ns   ; RESET ; ahmes:inst|TEMP[6]   ; CLOCK    ;
+; N/A   ; None         ; 1.640 ns   ; RESET ; ahmes:inst|INSTR[7]  ; CLOCK    ;
+; N/A   ; None         ; 1.640 ns   ; RESET ; ahmes:inst|INSTR[4]  ; CLOCK    ;
+; N/A   ; None         ; 1.585 ns   ; RESET ; ahmes:inst|AC[1]     ; CLOCK    ;
+; N/A   ; None         ; 1.585 ns   ; RESET ; ahmes:inst|AC[3]     ; CLOCK    ;
+; N/A   ; None         ; 1.585 ns   ; RESET ; ahmes:inst|AC[4]     ; CLOCK    ;
+; N/A   ; None         ; 1.585 ns   ; RESET ; ahmes:inst|AC[2]     ; CLOCK    ;
+; N/A   ; None         ; 1.585 ns   ; RESET ; ahmes:inst|AC[5]     ; CLOCK    ;
+; N/A   ; None         ; 1.585 ns   ; RESET ; ahmes:inst|AC[6]     ; CLOCK    ;
+; N/A   ; None         ; 1.585 ns   ; RESET ; ahmes:inst|AC[7]     ; CLOCK    ;
+; N/A   ; None         ; 1.581 ns   ; RESET ; ahmes:inst|AC[0]     ; CLOCK    ;
+; N/A   ; None         ; 1.467 ns   ; RESET ; ahmes:inst|OPER_A[6] ; CLOCK    ;
+; N/A   ; None         ; 1.467 ns   ; RESET ; ahmes:inst|OPER_A[1] ; CLOCK    ;
+; N/A   ; None         ; 1.467 ns   ; RESET ; ahmes:inst|OPER_A[3] ; CLOCK    ;
+; N/A   ; None         ; 1.467 ns   ; RESET ; ahmes:inst|OPER_A[5] ; CLOCK    ;
+; N/A   ; None         ; 1.467 ns   ; RESET ; ahmes:inst|OPER_A[7] ; CLOCK    ;
+; N/A   ; None         ; 1.467 ns   ; RESET ; ahmes:inst|OPER_A[0] ; CLOCK    ;
+; N/A   ; None         ; 1.467 ns   ; RESET ; ahmes:inst|OPER_A[2] ; CLOCK    ;
+; N/A   ; None         ; 1.467 ns   ; RESET ; ahmes:inst|OPER_A[4] ; CLOCK    ;
+; N/A   ; None         ; 1.418 ns   ; RESET ; ahmes:inst|OPER_B[7] ; CLOCK    ;
+; N/A   ; None         ; 1.418 ns   ; RESET ; ahmes:inst|OPER_B[0] ; CLOCK    ;
+; N/A   ; None         ; 1.418 ns   ; RESET ; ahmes:inst|OPER_B[2] ; CLOCK    ;
+; N/A   ; None         ; 1.418 ns   ; RESET ; ahmes:inst|OPER_B[3] ; CLOCK    ;
+; N/A   ; None         ; 1.418 ns   ; RESET ; ahmes:inst|OPER_B[6] ; CLOCK    ;
+; N/A   ; None         ; 1.418 ns   ; RESET ; ahmes:inst|OPER_B[5] ; CLOCK    ;
+; N/A   ; None         ; 1.418 ns   ; RESET ; ahmes:inst|OPER_B[4] ; CLOCK    ;
+; N/A   ; None         ; 1.418 ns   ; RESET ; ahmes:inst|OPER_B[1] ; CLOCK    ;
+; N/A   ; None         ; 1.387 ns   ; RESET ; ahmes:inst|INSTR[6]  ; CLOCK    ;
+; N/A   ; None         ; 1.371 ns   ; RESET ; ahmes:inst|TEMP[7]   ; CLOCK    ;
+; N/A   ; None         ; 0.555 ns   ; RESET ; ahmes:inst|Cout      ; CLOCK    ;
+; N/A   ; None         ; 0.516 ns   ; RESET ; ahmes:inst|ERROR     ; CLOCK    ;
++-------+--------------+------------+-------+----------------------+----------+
+
+
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; tco                                                                                                                                                                           ;
++-------+--------------+------------+---------------------------------------------------------------------------------------------------------------+--------------+------------+
+; Slack ; Required tco ; Actual tco ; From                                                                                                          ; To           ; From Clock ;
++-------+--------------+------------+---------------------------------------------------------------------------------------------------------------+--------------+------------+
+; N/A   ; None         ; 10.210 ns  ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_we_reg       ; data_in[2]   ; CLOCK      ;
+; N/A   ; None         ; 10.210 ns  ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg0 ; data_in[2]   ; CLOCK      ;
+; N/A   ; None         ; 10.210 ns  ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg1 ; data_in[2]   ; CLOCK      ;
+; N/A   ; None         ; 10.210 ns  ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg2 ; data_in[2]   ; CLOCK      ;
+; N/A   ; None         ; 10.210 ns  ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg3 ; data_in[2]   ; CLOCK      ;
+; N/A   ; None         ; 10.210 ns  ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg4 ; data_in[2]   ; CLOCK      ;
+; N/A   ; None         ; 10.210 ns  ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg5 ; data_in[2]   ; CLOCK      ;
+; N/A   ; None         ; 10.210 ns  ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg6 ; data_in[2]   ; CLOCK      ;
+; N/A   ; None         ; 10.210 ns  ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg7 ; data_in[2]   ; CLOCK      ;
+; N/A   ; None         ; 10.192 ns  ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_we_reg       ; data_in[4]   ; CLOCK      ;
+; N/A   ; None         ; 10.192 ns  ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg0 ; data_in[4]   ; CLOCK      ;
+; N/A   ; None         ; 10.192 ns  ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg1 ; data_in[4]   ; CLOCK      ;
+; N/A   ; None         ; 10.192 ns  ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg2 ; data_in[4]   ; CLOCK      ;
+; N/A   ; None         ; 10.192 ns  ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg3 ; data_in[4]   ; CLOCK      ;
+; N/A   ; None         ; 10.192 ns  ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg4 ; data_in[4]   ; CLOCK      ;
+; N/A   ; None         ; 10.192 ns  ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg5 ; data_in[4]   ; CLOCK      ;
+; N/A   ; None         ; 10.192 ns  ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg6 ; data_in[4]   ; CLOCK      ;
+; N/A   ; None         ; 10.192 ns  ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg7 ; data_in[4]   ; CLOCK      ;
+; N/A   ; None         ; 9.699 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_we_reg       ; data_in[5]   ; CLOCK      ;
+; N/A   ; None         ; 9.699 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg0 ; data_in[5]   ; CLOCK      ;
+; N/A   ; None         ; 9.699 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg1 ; data_in[5]   ; CLOCK      ;
+; N/A   ; None         ; 9.699 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg2 ; data_in[5]   ; CLOCK      ;
+; N/A   ; None         ; 9.699 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg3 ; data_in[5]   ; CLOCK      ;
+; N/A   ; None         ; 9.699 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg4 ; data_in[5]   ; CLOCK      ;
+; N/A   ; None         ; 9.699 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg5 ; data_in[5]   ; CLOCK      ;
+; N/A   ; None         ; 9.699 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg6 ; data_in[5]   ; CLOCK      ;
+; N/A   ; None         ; 9.699 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg7 ; data_in[5]   ; CLOCK      ;
+; N/A   ; None         ; 9.678 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_we_reg       ; data_in[3]   ; CLOCK      ;
+; N/A   ; None         ; 9.678 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg0 ; data_in[3]   ; CLOCK      ;
+; N/A   ; None         ; 9.678 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg1 ; data_in[3]   ; CLOCK      ;
+; N/A   ; None         ; 9.678 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg2 ; data_in[3]   ; CLOCK      ;
+; N/A   ; None         ; 9.678 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg3 ; data_in[3]   ; CLOCK      ;
+; N/A   ; None         ; 9.678 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg4 ; data_in[3]   ; CLOCK      ;
+; N/A   ; None         ; 9.678 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg5 ; data_in[3]   ; CLOCK      ;
+; N/A   ; None         ; 9.678 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg6 ; data_in[3]   ; CLOCK      ;
+; N/A   ; None         ; 9.678 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg7 ; data_in[3]   ; CLOCK      ;
+; N/A   ; None         ; 9.668 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_we_reg       ; data_in[6]   ; CLOCK      ;
+; N/A   ; None         ; 9.668 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg0 ; data_in[6]   ; CLOCK      ;
+; N/A   ; None         ; 9.668 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg1 ; data_in[6]   ; CLOCK      ;
+; N/A   ; None         ; 9.668 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg2 ; data_in[6]   ; CLOCK      ;
+; N/A   ; None         ; 9.668 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg3 ; data_in[6]   ; CLOCK      ;
+; N/A   ; None         ; 9.668 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg4 ; data_in[6]   ; CLOCK      ;
+; N/A   ; None         ; 9.668 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg5 ; data_in[6]   ; CLOCK      ;
+; N/A   ; None         ; 9.668 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg6 ; data_in[6]   ; CLOCK      ;
+; N/A   ; None         ; 9.668 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg7 ; data_in[6]   ; CLOCK      ;
+; N/A   ; None         ; 9.580 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_we_reg       ; data_in[7]   ; CLOCK      ;
+; N/A   ; None         ; 9.580 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg0 ; data_in[7]   ; CLOCK      ;
+; N/A   ; None         ; 9.580 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg1 ; data_in[7]   ; CLOCK      ;
+; N/A   ; None         ; 9.580 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg2 ; data_in[7]   ; CLOCK      ;
+; N/A   ; None         ; 9.580 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg3 ; data_in[7]   ; CLOCK      ;
+; N/A   ; None         ; 9.580 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg4 ; data_in[7]   ; CLOCK      ;
+; N/A   ; None         ; 9.580 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg5 ; data_in[7]   ; CLOCK      ;
+; N/A   ; None         ; 9.580 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg6 ; data_in[7]   ; CLOCK      ;
+; N/A   ; None         ; 9.580 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg7 ; data_in[7]   ; CLOCK      ;
+; N/A   ; None         ; 9.553 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_we_reg       ; data_in[0]   ; CLOCK      ;
+; N/A   ; None         ; 9.553 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg0 ; data_in[0]   ; CLOCK      ;
+; N/A   ; None         ; 9.553 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg1 ; data_in[0]   ; CLOCK      ;
+; N/A   ; None         ; 9.553 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg2 ; data_in[0]   ; CLOCK      ;
+; N/A   ; None         ; 9.553 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg3 ; data_in[0]   ; CLOCK      ;
+; N/A   ; None         ; 9.553 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg4 ; data_in[0]   ; CLOCK      ;
+; N/A   ; None         ; 9.553 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg5 ; data_in[0]   ; CLOCK      ;
+; N/A   ; None         ; 9.553 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg6 ; data_in[0]   ; CLOCK      ;
+; N/A   ; None         ; 9.553 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg7 ; data_in[0]   ; CLOCK      ;
+; N/A   ; None         ; 9.343 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_we_reg       ; data_in[1]   ; CLOCK      ;
+; N/A   ; None         ; 9.343 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg0 ; data_in[1]   ; CLOCK      ;
+; N/A   ; None         ; 9.343 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg1 ; data_in[1]   ; CLOCK      ;
+; N/A   ; None         ; 9.343 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg2 ; data_in[1]   ; CLOCK      ;
+; N/A   ; None         ; 9.343 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg3 ; data_in[1]   ; CLOCK      ;
+; N/A   ; None         ; 9.343 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg4 ; data_in[1]   ; CLOCK      ;
+; N/A   ; None         ; 9.343 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg5 ; data_in[1]   ; CLOCK      ;
+; N/A   ; None         ; 9.343 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg6 ; data_in[1]   ; CLOCK      ;
+; N/A   ; None         ; 9.343 ns   ; mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_address_reg7 ; data_in[1]   ; CLOCK      ;
+; N/A   ; None         ; 8.227 ns   ; pio:inst3|out_port[3]                                                                                         ; test_port[3] ; CLOCK      ;
+; N/A   ; None         ; 8.224 ns   ; pio:inst3|out_port[4]                                                                                         ; test_port[4] ; CLOCK      ;
+; N/A   ; None         ; 8.214 ns   ; pio:inst3|out_port[1]                                                                                         ; test_port[1] ; CLOCK      ;
+; N/A   ; None         ; 8.208 ns   ; pio:inst3|out_port[2]                                                                                         ; test_port[2] ; CLOCK      ;
+; N/A   ; None         ; 8.105 ns   ; pio:inst3|out_port[6]                                                                                         ; test_port[6] ; CLOCK      ;
+; N/A   ; None         ; 8.079 ns   ; pio:inst3|out_port[7]                                                                                         ; test_port[7] ; CLOCK      ;
+; N/A   ; None         ; 7.974 ns   ; pio:inst3|out_port[5]                                                                                         ; test_port[5] ; CLOCK      ;
+; N/A   ; None         ; 7.716 ns   ; pio:inst3|out_port[0]                                                                                         ; test_port[0] ; CLOCK      ;
+; N/A   ; None         ; 7.037 ns   ; ahmes:inst|data_out[1]                                                                                        ; DATA_OUT[1]  ; CLOCK      ;
+; N/A   ; None         ; 7.014 ns   ; ahmes:inst|data_out[4]                                                                                        ; DATA_OUT[4]  ; CLOCK      ;
+; N/A   ; None         ; 6.952 ns   ; ahmes:inst|data_out[7]                                                                                        ; DATA_OUT[7]  ; CLOCK      ;
+; N/A   ; None         ; 6.952 ns   ; ahmes:inst|ERROR                                                                                              ; ERROR        ; CLOCK      ;
+; N/A   ; None         ; 6.875 ns   ; ahmes:inst|data_out[0]                                                                                        ; DATA_OUT[0]  ; CLOCK      ;
+; N/A   ; None         ; 6.729 ns   ; ahmes:inst|data_out[5]                                                                                        ; DATA_OUT[5]  ; CLOCK      ;
+; N/A   ; None         ; 6.706 ns   ; ahmes:inst|data_out[6]                                                                                        ; DATA_OUT[6]  ; CLOCK      ;
+; N/A   ; None         ; 6.616 ns   ; ahmes:inst|data_out[3]                                                                                        ; DATA_OUT[3]  ; CLOCK      ;
+; N/A   ; None         ; 6.383 ns   ; ahmes:inst|data_out[2]                                                                                        ; DATA_OUT[2]  ; CLOCK      ;
++-------+--------------+------------+---------------------------------------------------------------------------------------------------------------+--------------+------------+
+
+
++-----------------------------------------------------------------------------------+
+; th                                                                                ;
++---------------+-------------+-----------+-------+----------------------+----------+
+; Minimum Slack ; Required th ; Actual th ; From  ; To                   ; To Clock ;
++---------------+-------------+-----------+-------+----------------------+----------+
+; N/A           ; None        ; -0.286 ns ; RESET ; ahmes:inst|ERROR     ; CLOCK    ;
+; N/A           ; None        ; -0.325 ns ; RESET ; ahmes:inst|Cout      ; CLOCK    ;
+; N/A           ; None        ; -1.141 ns ; RESET ; ahmes:inst|TEMP[7]   ; CLOCK    ;
+; N/A           ; None        ; -1.157 ns ; RESET ; ahmes:inst|INSTR[6]  ; CLOCK    ;
+; N/A           ; None        ; -1.188 ns ; RESET ; ahmes:inst|OPER_B[7] ; CLOCK    ;
+; N/A           ; None        ; -1.188 ns ; RESET ; ahmes:inst|OPER_B[0] ; CLOCK    ;
+; N/A           ; None        ; -1.188 ns ; RESET ; ahmes:inst|OPER_B[2] ; CLOCK    ;
+; N/A           ; None        ; -1.188 ns ; RESET ; ahmes:inst|OPER_B[3] ; CLOCK    ;
+; N/A           ; None        ; -1.188 ns ; RESET ; ahmes:inst|OPER_B[6] ; CLOCK    ;
+; N/A           ; None        ; -1.188 ns ; RESET ; ahmes:inst|OPER_B[5] ; CLOCK    ;
+; N/A           ; None        ; -1.188 ns ; RESET ; ahmes:inst|OPER_B[4] ; CLOCK    ;
+; N/A           ; None        ; -1.188 ns ; RESET ; ahmes:inst|OPER_B[1] ; CLOCK    ;
+; N/A           ; None        ; -1.237 ns ; RESET ; ahmes:inst|OPER_A[6] ; CLOCK    ;
+; N/A           ; None        ; -1.237 ns ; RESET ; ahmes:inst|OPER_A[1] ; CLOCK    ;
+; N/A           ; None        ; -1.237 ns ; RESET ; ahmes:inst|OPER_A[3] ; CLOCK    ;
+; N/A           ; None        ; -1.237 ns ; RESET ; ahmes:inst|OPER_A[5] ; CLOCK    ;
+; N/A           ; None        ; -1.237 ns ; RESET ; ahmes:inst|OPER_A[7] ; CLOCK    ;
+; N/A           ; None        ; -1.237 ns ; RESET ; ahmes:inst|OPER_A[0] ; CLOCK    ;
+; N/A           ; None        ; -1.237 ns ; RESET ; ahmes:inst|OPER_A[2] ; CLOCK    ;
+; N/A           ; None        ; -1.237 ns ; RESET ; ahmes:inst|OPER_A[4] ; CLOCK    ;
+; N/A           ; None        ; -1.351 ns ; RESET ; ahmes:inst|AC[0]     ; CLOCK    ;
+; N/A           ; None        ; -1.355 ns ; RESET ; ahmes:inst|AC[1]     ; CLOCK    ;
+; N/A           ; None        ; -1.355 ns ; RESET ; ahmes:inst|AC[3]     ; CLOCK    ;
+; N/A           ; None        ; -1.355 ns ; RESET ; ahmes:inst|AC[4]     ; CLOCK    ;
+; N/A           ; None        ; -1.355 ns ; RESET ; ahmes:inst|AC[2]     ; CLOCK    ;
+; N/A           ; None        ; -1.355 ns ; RESET ; ahmes:inst|AC[5]     ; CLOCK    ;
+; N/A           ; None        ; -1.355 ns ; RESET ; ahmes:inst|AC[6]     ; CLOCK    ;
+; N/A           ; None        ; -1.355 ns ; RESET ; ahmes:inst|AC[7]     ; CLOCK    ;
+; N/A           ; None        ; -1.410 ns ; RESET ; ahmes:inst|INSTR[7]  ; CLOCK    ;
+; N/A           ; None        ; -1.410 ns ; RESET ; ahmes:inst|INSTR[4]  ; CLOCK    ;
+; N/A           ; None        ; -1.447 ns ; RESET ; ahmes:inst|TEMP[0]   ; CLOCK    ;
+; N/A           ; None        ; -1.447 ns ; RESET ; ahmes:inst|TEMP[1]   ; CLOCK    ;
+; N/A           ; None        ; -1.447 ns ; RESET ; ahmes:inst|TEMP[2]   ; CLOCK    ;
+; N/A           ; None        ; -1.447 ns ; RESET ; ahmes:inst|TEMP[3]   ; CLOCK    ;
+; N/A           ; None        ; -1.447 ns ; RESET ; ahmes:inst|TEMP[4]   ; CLOCK    ;
+; N/A           ; None        ; -1.447 ns ; RESET ; ahmes:inst|TEMP[5]   ; CLOCK    ;
+; N/A           ; None        ; -1.447 ns ; RESET ; ahmes:inst|TEMP[6]   ; CLOCK    ;
+; N/A           ; None        ; -1.476 ns ; RESET ; ahmes:inst|INSTR[0]  ; CLOCK    ;
+; N/A           ; None        ; -1.738 ns ; RESET ; ahmes:inst|INSTR[3]  ; CLOCK    ;
+; N/A           ; None        ; -1.738 ns ; RESET ; ahmes:inst|INSTR[2]  ; CLOCK    ;
+; N/A           ; None        ; -1.738 ns ; RESET ; ahmes:inst|INSTR[1]  ; CLOCK    ;
+; N/A           ; None        ; -1.738 ns ; RESET ; ahmes:inst|INSTR[5]  ; CLOCK    ;
++---------------+-------------+-----------+-------+----------------------+----------+
+
+
++--------------------------+
+; Timing Analyzer Messages ;
++--------------------------+
+Info: *******************************************************************
+Info: Running Quartus II Classic Timing Analyzer
+    Info: Version 9.1 Build 350 03/24/2010 Service Pack 2 SJ Web Edition
+    Info: Processing started: Sat Jul 23 15:58:44 2016
+Info: Command: quartus_tan --read_settings_files=off --write_settings_files=off AHMES -c AHMES --timing_analysis_only
+Warning: Timing Analysis is analyzing one or more combinational loops as latches
+    Warning: Node "ula:inst1|V" is a latch
+    Warning: Node "ula:inst1|B" is a latch
+    Warning: Node "ula:inst1|C" is a latch
+Warning: Found pins functioning as undefined clocks and/or memory enables
+    Info: Assuming node "CLOCK" is an undefined clock
+Warning: Found 8 node(s) in clock paths which may be acting as ripple and/or gated clocks -- node(s) analyzed as buffer(s) resulting in clock skew
+    Info: Detected ripple clock "ahmes:inst|OPERACAO[0]" as buffer
+    Info: Detected gated clock "ula:inst1|Mux0~0" as buffer
+    Info: Detected gated clock "ula:inst1|Mux12~0" as buffer
+    Info: Detected gated clock "ula:inst1|Mux2~0" as buffer
+    Info: Detected ripple clock "ahmes:inst|OPERACAO[2]" as buffer
+    Info: Detected ripple clock "ahmes:inst|OPERACAO[1]" as buffer
+    Info: Detected ripple clock "ahmes:inst|OPERACAO[3]" as buffer
+    Info: Detected ripple clock "ahmes:inst|mem_write" as buffer
+Info: Clock "CLOCK" has Internal fmax of 62.23 MHz between source register "ula:inst1|C" and destination register "ahmes:inst|PC[2]" (period= 16.07 ns)
+    Info: + Longest register to register delay is 6.185 ns
+        Info: 1: + IC(0.000 ns) + CELL(0.000 ns) = 0.000 ns; Loc. = LCCOMB_X12_Y6_N6; Fanout = 3; REG Node = 'ula:inst1|C'
+        Info: 2: + IC(0.291 ns) + CELL(0.150 ns) = 0.441 ns; Loc. = LCCOMB_X12_Y6_N12; Fanout = 2; COMB Node = 'ahmes:inst|address_bus[0]~16'
+        Info: 3: + IC(0.284 ns) + CELL(0.150 ns) = 0.875 ns; Loc. = LCCOMB_X12_Y6_N0; Fanout = 2; COMB Node = 'ahmes:inst|address_bus[0]~18'
+        Info: 4: + IC(0.249 ns) + CELL(0.150 ns) = 1.274 ns; Loc. = LCCOMB_X12_Y6_N26; Fanout = 1; COMB Node = 'ahmes:inst|address_bus[0]~19'
+        Info: 5: + IC(0.253 ns) + CELL(0.150 ns) = 1.677 ns; Loc. = LCCOMB_X12_Y6_N2; Fanout = 1; COMB Node = 'ahmes:inst|address_bus[0]~20'
+        Info: 6: + IC(0.241 ns) + CELL(0.150 ns) = 2.068 ns; Loc. = LCCOMB_X12_Y6_N28; Fanout = 2; COMB Node = 'ahmes:inst|address_bus[0]~21'
+        Info: 7: + IC(0.254 ns) + CELL(0.150 ns) = 2.472 ns; Loc. = LCCOMB_X12_Y6_N30; Fanout = 1; COMB Node = 'ahmes:inst|address_bus[0]~24'
+        Info: 8: + IC(0.252 ns) + CELL(0.150 ns) = 2.874 ns; Loc. = LCCOMB_X12_Y6_N8; Fanout = 4; COMB Node = 'ahmes:inst|address_bus[0]~25'
+        Info: 9: + IC(0.447 ns) + CELL(0.150 ns) = 3.471 ns; Loc. = LCCOMB_X12_Y6_N4; Fanout = 1; COMB Node = 'ahmes:inst|PC[1]~9'
+        Info: 10: + IC(0.254 ns) + CELL(0.275 ns) = 4.000 ns; Loc. = LCCOMB_X12_Y6_N16; Fanout = 1; COMB Node = 'ahmes:inst|PC[1]~10'
+        Info: 11: + IC(0.433 ns) + CELL(0.150 ns) = 4.583 ns; Loc. = LCCOMB_X13_Y6_N4; Fanout = 1; COMB Node = 'ahmes:inst|PC[1]~11'
+        Info: 12: + IC(0.256 ns) + CELL(0.275 ns) = 5.114 ns; Loc. = LCCOMB_X13_Y6_N14; Fanout = 7; COMB Node = 'ahmes:inst|PC[1]~16'
+        Info: 13: + IC(0.411 ns) + CELL(0.660 ns) = 6.185 ns; Loc. = LCFF_X14_Y6_N1; Fanout = 5; REG Node = 'ahmes:inst|PC[2]'
+        Info: Total cell delay = 2.560 ns ( 41.39 % )
+        Info: Total interconnect delay = 3.625 ns ( 58.61 % )
+    Info: - Smallest clock skew is -1.886 ns
+        Info: + Shortest clock path from clock "CLOCK" to destination register is 2.329 ns
+            Info: 1: + IC(0.000 ns) + CELL(0.989 ns) = 0.989 ns; Loc. = PIN_17; Fanout = 6; CLK Node = 'CLOCK'
+            Info: 2: + IC(0.122 ns) + CELL(0.000 ns) = 1.111 ns; Loc. = CLKCTRL_G2; Fanout = 119; COMB Node = 'CLOCK~clkctrl'
+            Info: 3: + IC(0.681 ns) + CELL(0.537 ns) = 2.329 ns; Loc. = LCFF_X14_Y6_N1; Fanout = 5; REG Node = 'ahmes:inst|PC[2]'
+            Info: Total cell delay = 1.526 ns ( 65.52 % )
+            Info: Total interconnect delay = 0.803 ns ( 34.48 % )
+        Info: - Longest clock path from clock "CLOCK" to source register is 4.215 ns
+            Info: 1: + IC(0.000 ns) + CELL(0.989 ns) = 0.989 ns; Loc. = PIN_17; Fanout = 6; CLK Node = 'CLOCK'
+            Info: 2: + IC(0.791 ns) + CELL(0.787 ns) = 2.567 ns; Loc. = LCFF_X8_Y6_N31; Fanout = 20; REG Node = 'ahmes:inst|OPERACAO[2]'
+            Info: 3: + IC(0.342 ns) + CELL(0.419 ns) = 3.328 ns; Loc. = LCCOMB_X8_Y6_N20; Fanout = 1; COMB Node = 'ula:inst1|Mux0~0'
+            Info: 4: + IC(0.737 ns) + CELL(0.150 ns) = 4.215 ns; Loc. = LCCOMB_X12_Y6_N6; Fanout = 3; REG Node = 'ula:inst1|C'
+            Info: Total cell delay = 2.345 ns ( 55.63 % )
+            Info: Total interconnect delay = 1.870 ns ( 44.37 % )
+    Info: + Micro clock to output delay of source is 0.000 ns
+    Info: + Micro setup delay of destination is -0.036 ns
+    Info: Delay path is controlled by inverted clocks -- if clock duty cycle is 50%, fmax is divided by two
+Warning: Circuit may not operate. Detected 8 non-operational path(s) clocked by clock "CLOCK" with clock skew larger than data delay. See Compilation Report for details.
+Info: Found hold time violation between source  pin or register "ahmes:inst|data_out[4]" and destination pin or register "pio:inst3|out_port[4]" for clock "CLOCK" (Hold time is 375 ps)
+    Info: + Largest clock skew is 1.670 ns
+        Info: + Longest clock path from clock "CLOCK" to destination register is 4.002 ns
+            Info: 1: + IC(0.000 ns) + CELL(0.989 ns) = 0.989 ns; Loc. = PIN_17; Fanout = 6; CLK Node = 'CLOCK'
+            Info: 2: + IC(0.331 ns) + CELL(0.787 ns) = 2.107 ns; Loc. = LCFF_X1_Y6_N21; Fanout = 3; REG Node = 'ahmes:inst|mem_write'
+            Info: 3: + IC(0.632 ns) + CELL(0.000 ns) = 2.739 ns; Loc. = CLKCTRL_G0; Fanout = 8; COMB Node = 'ahmes:inst|mem_write~clkctrl'
+            Info: 4: + IC(0.726 ns) + CELL(0.537 ns) = 4.002 ns; Loc. = LCFF_X12_Y11_N19; Fanout = 1; REG Node = 'pio:inst3|out_port[4]'
+            Info: Total cell delay = 2.313 ns ( 57.80 % )
+            Info: Total interconnect delay = 1.689 ns ( 42.20 % )
+        Info: - Shortest clock path from clock "CLOCK" to source register is 2.332 ns
+            Info: 1: + IC(0.000 ns) + CELL(0.989 ns) = 0.989 ns; Loc. = PIN_17; Fanout = 6; CLK Node = 'CLOCK'
+            Info: 2: + IC(0.122 ns) + CELL(0.000 ns) = 1.111 ns; Loc. = CLKCTRL_G2; Fanout = 119; COMB Node = 'CLOCK~clkctrl'
+            Info: 3: + IC(0.684 ns) + CELL(0.537 ns) = 2.332 ns; Loc. = LCFF_X10_Y7_N15; Fanout = 3; REG Node = 'ahmes:inst|data_out[4]'
+            Info: Total cell delay = 1.526 ns ( 65.44 % )
+            Info: Total interconnect delay = 0.806 ns ( 34.56 % )
+    Info: - Micro clock to output delay of source is 0.250 ns
+    Info: - Shortest register to register delay is 1.311 ns
+        Info: 1: + IC(0.000 ns) + CELL(0.000 ns) = 0.000 ns; Loc. = LCFF_X10_Y7_N15; Fanout = 3; REG Node = 'ahmes:inst|data_out[4]'
+        Info: 2: + IC(1.078 ns) + CELL(0.149 ns) = 1.227 ns; Loc. = LCCOMB_X12_Y11_N18; Fanout = 1; COMB Node = 'pio:inst3|out_port[4]~feeder'
+        Info: 3: + IC(0.000 ns) + CELL(0.084 ns) = 1.311 ns; Loc. = LCFF_X12_Y11_N19; Fanout = 1; REG Node = 'pio:inst3|out_port[4]'
+        Info: Total cell delay = 0.233 ns ( 17.77 % )
+        Info: Total interconnect delay = 1.078 ns ( 82.23 % )
+    Info: + Micro hold delay of destination is 0.266 ns
+Info: tsu for register "ahmes:inst|INSTR[3]" (data pin = "RESET", clock pin = "CLOCK") is 1.968 ns
+    Info: + Longest pin to register delay is 4.348 ns
+        Info: 1: + IC(0.000 ns) + CELL(0.979 ns) = 0.979 ns; Loc. = PIN_18; Fanout = 8; PIN Node = 'RESET'
+        Info: 2: + IC(1.297 ns) + CELL(0.398 ns) = 2.674 ns; Loc. = LCCOMB_X10_Y8_N26; Fanout = 8; COMB Node = 'ahmes:inst|INSTR[7]~0'
+        Info: 3: + IC(1.014 ns) + CELL(0.660 ns) = 4.348 ns; Loc. = LCFF_X12_Y6_N21; Fanout = 22; REG Node = 'ahmes:inst|INSTR[3]'
+        Info: Total cell delay = 2.037 ns ( 46.85 % )
+        Info: Total interconnect delay = 2.311 ns ( 53.15 % )
+    Info: + Micro setup delay of destination is -0.036 ns
+    Info: - Shortest clock path from clock "CLOCK" to destination register is 2.344 ns
+        Info: 1: + IC(0.000 ns) + CELL(0.989 ns) = 0.989 ns; Loc. = PIN_17; Fanout = 6; CLK Node = 'CLOCK'
+        Info: 2: + IC(0.122 ns) + CELL(0.000 ns) = 1.111 ns; Loc. = CLKCTRL_G2; Fanout = 119; COMB Node = 'CLOCK~clkctrl'
+        Info: 3: + IC(0.696 ns) + CELL(0.537 ns) = 2.344 ns; Loc. = LCFF_X12_Y6_N21; Fanout = 22; REG Node = 'ahmes:inst|INSTR[3]'
+        Info: Total cell delay = 1.526 ns ( 65.10 % )
+        Info: Total interconnect delay = 0.818 ns ( 34.90 % )
+Info: tco from clock "CLOCK" to destination pin "data_in[2]" through memory "mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_we_reg" is 10.210 ns
+    Info: + Longest clock path from clock "CLOCK" to source memory is 2.399 ns
+        Info: 1: + IC(0.000 ns) + CELL(0.989 ns) = 0.989 ns; Loc. = PIN_17; Fanout = 6; CLK Node = 'CLOCK'
+        Info: 2: + IC(0.122 ns) + CELL(0.000 ns) = 1.111 ns; Loc. = CLKCTRL_G2; Fanout = 119; COMB Node = 'CLOCK~clkctrl'
+        Info: 3: + IC(0.627 ns) + CELL(0.661 ns) = 2.399 ns; Loc. = M4K_X11_Y7; Fanout = 8; MEM Node = 'mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_we_reg'
+        Info: Total cell delay = 1.650 ns ( 68.78 % )
+        Info: Total interconnect delay = 0.749 ns ( 31.22 % )
+    Info: + Micro clock to output delay of source is 0.209 ns
+    Info: + Longest memory to pin delay is 7.602 ns
+        Info: 1: + IC(0.000 ns) + CELL(0.000 ns) = 0.000 ns; Loc. = M4K_X11_Y7; Fanout = 8; MEM Node = 'mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|ram_block1a0~porta_we_reg'
+        Info: 2: + IC(0.000 ns) + CELL(2.993 ns) = 2.993 ns; Loc. = M4K_X11_Y7; Fanout = 7; MEM Node = 'mem_test:inst4|altsyncram:altsyncram_component|altsyncram_qjj1:auto_generated|q_a[2]'
+        Info: 3: + IC(1.967 ns) + CELL(2.642 ns) = 7.602 ns; Loc. = PIN_87; Fanout = 0; PIN Node = 'data_in[2]'
+        Info: Total cell delay = 5.635 ns ( 74.13 % )
+        Info: Total interconnect delay = 1.967 ns ( 25.87 % )
+Info: th for register "ahmes:inst|ERROR" (data pin = "RESET", clock pin = "CLOCK") is -0.286 ns
+    Info: + Longest clock path from clock "CLOCK" to destination register is 2.347 ns
+        Info: 1: + IC(0.000 ns) + CELL(0.989 ns) = 0.989 ns; Loc. = PIN_17; Fanout = 6; CLK Node = 'CLOCK'
+        Info: 2: + IC(0.122 ns) + CELL(0.000 ns) = 1.111 ns; Loc. = CLKCTRL_G2; Fanout = 119; COMB Node = 'CLOCK~clkctrl'
+        Info: 3: + IC(0.699 ns) + CELL(0.537 ns) = 2.347 ns; Loc. = LCFF_X10_Y8_N13; Fanout = 3; REG Node = 'ahmes:inst|ERROR'
+        Info: Total cell delay = 1.526 ns ( 65.02 % )
+        Info: Total interconnect delay = 0.821 ns ( 34.98 % )
+    Info: + Micro hold delay of destination is 0.266 ns
+    Info: - Shortest pin to register delay is 2.899 ns
+        Info: 1: + IC(0.000 ns) + CELL(0.979 ns) = 0.979 ns; Loc. = PIN_18; Fanout = 8; PIN Node = 'RESET'
+        Info: 2: + IC(1.260 ns) + CELL(0.660 ns) = 2.899 ns; Loc. = LCFF_X10_Y8_N13; Fanout = 3; REG Node = 'ahmes:inst|ERROR'
+        Info: Total cell delay = 1.639 ns ( 56.54 % )
+        Info: Total interconnect delay = 1.260 ns ( 43.46 % )
+Info: Quartus II Classic Timing Analyzer was successful. 0 errors, 7 warnings
+    Info: Peak virtual memory: 159 megabytes
+    Info: Processing ended: Sat Jul 23 15:58:45 2016
+    Info: Elapsed time: 00:00:01
+    Info: Total CPU time (on all processors): 00:00:01
+
+

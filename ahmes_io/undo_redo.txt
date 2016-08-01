@@ -1,0 +1,26 @@
+GED
+
+	Undo Commands
+	     1.	Resize
+	     2.	Insert Node
+	     3.	Move
+	     4.	Move
+	     5.	Insert Symbol
+	     6.	Delete
+	     7.	Insert Symbol
+	     8.	Delete
+	     9.	Update Symbol or Block
+	    10.	Insert Symbol
+	    11.	Delete
+	    12.	Insert Symbol
+	    13.	Insert Symbol
+	    14.	Delete
+	    15.	Delete
+
+
+RPW
+
+	Undo Commands
+	     1.	||Compilation Report||Flow Summary
+
+

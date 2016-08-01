@@ -1,0 +1,64 @@
+# Copyright (C) 1991-2007 Altera Corporation
+# Your use of Altera Corporation's design tools, logic functions 
+# and other software and tools, and its AMPP partner logic 
+# functions, and any output files from any of the foregoing 
+# (including device programming or simulation files), and any 
+# associated documentation or information are expressly subject 
+# to the terms and conditions of the Altera Program License 
+# Subscription Agreement, Altera MegaCore Function License 
+# Agreement, or other applicable license agreement, including, 
+# without limitation, that your use is for the sole purpose of 
+# programming logic devices manufactured by Altera and sold by 
+# Altera or its authorized distributors.  Please refer to the 
+# applicable agreement for further details.
+
+
+# The default values for assignments are stored in the file
+#		AHMES_assignment_defaults.qdf
+# If this file doesn't exist, and for assignments not listed, see file
+#		assignment_defaults.qdf
+
+# Altera recommends that you do not modify this file. This
+# file is updated automatically by the Quartus II software
+# and any changes you make may be lost or overwritten.
+
+
+set_global_assignment -name DEVICE EP4CE6E22C8
+set_global_assignment -name FAMILY "Cyclone IV E"
+set_global_assignment -name TOP_LEVEL_ENTITY CPU
+set_global_assignment -name ORIGINAL_QUARTUS_VERSION 7.0
+set_global_assignment -name PROJECT_CREATION_TIME_DATE "08:51:49  MAY 19, 2007"
+set_global_assignment -name LAST_QUARTUS_VERSION "9.1 SP2"
+set_global_assignment -name FITTER_EFFORT "STANDARD FIT"
+set_global_assignment -name SIMULATION_MODE FUNCTIONAL
+set_global_assignment -name USER_LIBRARIES "C:\\Documents and Settings\\Fábio Pereira\\My Documents\\vhdl\\ahmes"
+set_global_assignment -name AUTO_RAM_RECOGNITION ON
+set_global_assignment -name ALLOW_ANY_RAM_SIZE_FOR_RECOGNITION ON
+set_global_assignment -name ADD_DEFAULT_PINS_TO_SIMULATION_OUTPUT_WAVEFORMS OFF
+set_global_assignment -name INCREMENTAL_COMPILATION OFF
+set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
+set_instance_assignment -name PARTITION_HIERARCHY no_file_for_top_partition -to | -section_id Top
+set_global_assignment -name LL_ROOT_REGION ON -section_id "Root Region"
+set_global_assignment -name LL_MEMBER_STATE LOCKED -section_id "Root Region"
+set_global_assignment -name INCREMENTAL_VECTOR_INPUT_SOURCE AHMES1.vwf
+set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
+set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
+set_global_assignment -name NOMINAL_CORE_SUPPLY_VOLTAGE 1.2V
+set_global_assignment -name DEVICE_FILTER_PACKAGE TQFP
+set_global_assignment -name VHDL_FILE AHMES.vhd
+set_global_assignment -name BDF_FILE CPU.bdf
+set_global_assignment -name MISC_FILE "E:/VHDL/AHMES_IO2/AHMES.dpf"
+set_location_assignment PIN_24 -to CLOCK
+set_location_assignment PIN_88 -to RESET
+set_global_assignment -name MIF_FILE loop2.mif
+set_location_assignment PIN_10 -to test_port[0]
+set_location_assignment PIN_11 -to test_port[1]
+set_location_assignment PIN_28 -to test_port[2]
+set_location_assignment PIN_30 -to test_port[3]
+set_location_assignment PIN_31 -to test_port[4]
+set_location_assignment PIN_32 -to test_port[5]
+set_location_assignment PIN_33 -to test_port[6]
+set_location_assignment PIN_34 -to test_port[7]
+set_global_assignment -name BSF_FILE mem_256.bsf
+set_global_assignment -name BSF_FILE port_out.bsf
+set_global_assignment -name QIP_FILE mem_256.qip

@@ -1,0 +1,83 @@
+Restore Archived Project report for AHMES
+Thu Jul 14 12:48:32 2016
+Quartus II Version 9.1 Build 350 03/24/2010 Service Pack 2 SJ Web Edition
+
+
+---------------------
+; Table of Contents ;
+---------------------
+  1. Legal Notice
+  2. Restore Archived Project Summary
+  3. Restore Archived Project Messages
+  4. Files Restored
+  5. Files Not Restored
+
+
+
+----------------
+; Legal Notice ;
+----------------
+Copyright (C) 1991-2010 Altera Corporation
+Your use of Altera Corporation's design tools, logic functions 
+and other software and tools, and its AMPP partner logic 
+functions, and any output files from any of the foregoing 
+(including device programming or simulation files), and any 
+associated documentation or information are expressly subject 
+to the terms and conditions of the Altera Program License 
+Subscription Agreement, Altera MegaCore Function License 
+Agreement, or other applicable license agreement, including, 
+without limitation, that your use is for the sole purpose of 
+programming logic devices manufactured by Altera and sold by 
+Altera or its authorized distributors.  Please refer to the 
+applicable agreement for further details.
+
+
+
++-------------------------------------------------------------------------+
+; Restore Archived Project Summary                                        ;
++---------------------------------+---------------------------------------+
+; Restore Archived Project Status ; Successful - Thu Jul 14 12:48:32 2016 ;
+; Revision Name                   ; AHMES                                 ;
+; Top-level Entity Name           ; CPU                                   ;
+; Family                          ; Cyclone II                            ;
++---------------------------------+---------------------------------------+
+
+
++-----------------------------------+
+; Restore Archived Project Messages ;
++-----------------------------------+
+Info: Successfully restored 'E:/vhdl/ahmes_io/ahmes.qar' into the 'E:/VHDL/AHMES_IO/' directory
+Info: Generated report 'AHMES.restore.rpt'
+Info: Evaluation of Tcl script c:/altera/91sp2/quartus/common/tcl/apps/qpm/qar.tcl was successful
+Info: Quartus II Shell was successful. 0 errors, 0 warnings
+    Info: Peak virtual memory: 119 megabytes
+    Info: Processing ended: Thu Jul 14 12:48:32 2016
+    Info: Elapsed time: 00:00:01
+    Info: Total CPU time (on all processors): 00:00:01
+
+
++-------------------------------+
+; Files Restored                ;
++-------------------------------+
+; File Name                     ;
++-------------------------------+
+; AHMES.qpf                     ;
+; AHMES.qsf                     ;
+; AHMES.vhd                     ;
+; AHMES1.vwf                    ;
+; AHMES_assignment_defaults.qdf ;
+; CPU.bdf                       ;
+; MEMORIA.vhd                   ;
+; db/AHMES.sim.cvwf             ;
+; lpm_ram_dq0.vhd               ;
+; ula.vhd                       ;
++-------------------------------+
+
+
++--------------------+
+; Files Not Restored ;
++--------------------+
+; File Name          ;
++--------------------+
+
+
