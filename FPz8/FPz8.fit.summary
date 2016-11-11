@@ -1,0 +1,16 @@
+Fitter Status : Successful - Thu Nov 10 23:29:55 2016
+Quartus II Version : 9.1 Build 350 03/24/2010 SP 2 SJ Web Edition
+Revision Name : FPz8
+Top-level Entity Name : CPU
+Family : Cyclone II
+Device : EP2C8T144C6
+Timing Models : Final
+Total logic elements : 4,910 / 8,256 ( 59 % )
+    Total combinational functions : 4,872 / 8,256 ( 59 % )
+    Dedicated logic registers : 495 / 8,256 ( 6 % )
+Total registers : 495
+Total pins : 12 / 85 ( 14 % )
+Total virtual pins : 0
+Total memory bits : 147,456 / 165,888 ( 89 % )
+Embedded Multiplier 9-bit elements : 1 / 36 ( 3 % )
+Total PLLs : 0 / 2 ( 0 % )
