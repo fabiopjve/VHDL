@@ -3,7 +3,7 @@
 -- Author: 	Fábio Pereira (fabio.jve@gmail.com)
 -- Version:	0.9		Nov, 11th, 2016
 
--- FPz8 is a softcore 100% object code compatible with the Z8 encore microcontroller line. Current implementation includes 
+-- FPz8 is a softcore 100% object-code compatible with the Z8 encore microcontroller line. Current implementation includes 
 -- 2kb of file registers (RAM), 16kb of program memory (using FPGA RAM), 8 vectored interrupts with programmable priority, 
 -- full-featured onchip debugger 100% compatible with Zilog's OCD and ZDS-II IDE.
 -- It was designed to work as a SoC and everything (except the USB chip) fits inside a single FPGA (I have used an Altera 
@@ -14,9 +14,10 @@
 -- believe the FPz8 can be a very interesting tool for learning/teaching about VHDL, computing and microprocessors/microcontrollers 
 -- programming.
 
--- You are free to use and to modify the FPz8 to fit your needs, except for comercial use (I don't expect anyone would do that anyway).
+-- You are free to use and to modify FPz8 to fit your needs, except for comercial use (I don't expect anyone would do that anyway).
 -- If you want to contribute to the project, contact me and share your thoughts.
 -- Don't forget to credit the author!
+
 -- Note: currently there are only a few SFRs physically implemented, they are:
 -- 0xFC0 - IRQ0
 -- 0xFC1 - IRQ0ENH
@@ -29,6 +30,13 @@
 -- 0xFFD - RP
 -- 0xFFE - SPH
 -- 0xFFF - SPL
+-- Also notice INT7 is not physically present as it is planned to be used with the coming timer peripheral
+
+-- What else is missing from the original architecture?
+-- A: no watchdog (WDT instruction runs as a NOP), no LDE and LDEI instructions (data memory related), no option bytes
+
+-- FPz8 was tested on a EP4CE6 mini board (50MHz clock)
+-- http://www.ebay.com/itm/EP4CE6-Mini-Board-USB-Blaster-Altera-Cyclone-IV-FPGA-CPLD-Nano-Size-
 
 -- This work is licensed under the Creative Commons Attribution 4.0 International License.
 -- To view a copy of this license, visit http://creativecommons.org/licenses/by/4.0/.
@@ -62,7 +70,7 @@ entity fpz8_cpu_v1 IS
 		INT6		: in std_logic;							-- interrupt 6 input (vector 0x000A)
 		DBG_RX		: in std_logic;							-- debugger receive input
 		DBG_TX		: buffer std_logic;						-- debugger transmit output
-		PAOUT		: buffer std_logic_vector(7 downto 0);	-- port A output data
+		PAOUT		: out std_logic_vector(7 downto 0);		-- port A output data
 		PAIN		: in std_logic_vector(7 downto 0);		-- port A input data
 		CLK			: in std_logic;							-- main clock
 		CLK_OUT		: out std_logic;						-- main gated-clock output
@@ -88,6 +96,7 @@ shared variable IRQ0ENH,IRQ0ENL				: std_logic_vector(7 downto 0);		-- interrupt
 shared variable SP 							: std_logic_vector(11 downto 0);	-- stack pointer
 shared variable RP							: std_logic_vector(7 downto 0);		-- register pointer
 shared variable FCTL						: std_logic_vector(7 downto 0);		-- flash control
+shared variable PAOUT_BUFFER				: std_logic_vector(7 downto 0);
 signal 			RXSYNC1, RXSYNC2			: std_logic;
 ATTRIBUTE preserve							: boolean;
 ATTRIBUTE preserve OF RXSYNC1				: signal IS true;
@@ -166,7 +175,9 @@ begin
 		elsif (ADDRESS=x"FC1") then IRQ0ENH := DATA;	------------------------------ IRQ0ENH register
 		elsif (ADDRESS=x"FC2") then IRQ0ENL := DATA;	------------------------------ IRQ0ENL register
 		elsif (ADDRESS=x"FCF") then	IRQE := DATA(7);	------------------------------- IRQCTL register
-		elsif (ADDRESS=x"FD3") then PAOUT <= DATA;	------------------------------------ PAOUT register
+		elsif (ADDRESS=x"FD3") then ---------------------------------------------------- PAOUT register
+			PAOUT <= DATA;	
+			PAOUT_BUFFER := DATA;
 		else 
 			REG_SEL <= '1';
 			RODB <= DATA;
@@ -195,7 +206,7 @@ begin
 		elsif (ADDRESS=x"FC2") then return IRQ0ENL;	--------------- IRQ0ENL register
 		elsif (ADDRESS=x"FCF") then return IRQE&"0000000";	-------- IRQCTL register
 		elsif (ADDRESS=x"FD2") then return PAIN;	------------------ PAIN register
-		elsif (ADDRESS=x"FD3") then return PAOUT;	----------------- PAOUT register
+		elsif (ADDRESS=x"FD3") then return PAOUT_BUFFER;	--------- PAOUT register
 		else 
 			REG_SEL <= '1';
 			return RIDB;
@@ -644,7 +655,7 @@ begin
 			if (OLD_IRQ0(6)='0' and INT6='1') then IRQ0(6) := '1'; end if;
 			OLD_IRQ0 := INT7&INT6&INT5&INT4&INT3&INT2&INT1&INT0;
 			CKDIVIDER := CKDIVIDER + 1;
-			if (CKDIVIDER=0) then
+			if (CKDIVIDER=0) then	-- main clock (50MHz) is divided by 3, resulting in a 16.66MHz system clock
 				WR <= '0';
 				PGM_WR <= '0';
 				
