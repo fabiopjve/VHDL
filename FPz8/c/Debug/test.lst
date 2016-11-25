@@ -1,0 +1,177 @@
+Zilog eZ8 Encore! Macro Assembler Version 2.53 (15022701) 24-Nov-16     20:12:10     page:   1
+
+
+PC     Object              I  Line    Source 
+                           A     1    ; Z8 Encore! ANSI C Compiler Release 3.64
+                           A     2    ; -nolocalcse -optsize -fastcall -const=RAM -li
+                           A     3    ; -model=S -optlink -regvar -reduceopt -debug -
+                           A     4    ; -peephole -alias 
+                           A     5    	DEFINE test_TEXT,SPACE=ROM
+                           A     6    	FILE	"..\..\..\..\..\..\DOCUME~1\ELETRO~
+                           A     7    .debug "C"
+                           A     8    	SEGMENT NEAR_DATA
+0000                       A     9    _array:
+0000 01                    A    10    	DB	1
+0001 03                    A    11    	DB	3
+0002 07                    A    12    	DB	7
+0003 0F                    A    13    	DB	15
+0004 1F                    A    14    	DB	31
+0005 3F                    A    15    	DB	63
+0006 7F                    A    16    	DB	127
+0007 FF                    A    17    	DB	255
+0008 7F                    A    18    	DB	127
+0009 3F                    A    19    	DB	63
+000A 1F                    A    20    	DB	31
+000B 0F                    A    21    	DB	15
+000C 07                    A    22    	DB	7
+000D 03                    A    23    	DB	3
+000E 01                    A    24    	DB	1
+000F 01                    A    25    	DB	1
+0010 01                    A    26    	DB	1
+0011 7F                    A    27    	DB	127
+0012 01                    A    28    	DB	1
+0013 00                    A    29    	DB	0
+                           A    30    .define "array"
+                           A    31    .alias "_array"
+                           A    32    .class 133
+                           A    33    .value _array
+                           A    34    .dim 20
+                           A    35    .type 108
+                           A    36    .endef
+                           A    37    	SEGMENT ROM_DATA
+                           A    38    
+                           A    39    
+                           A    40    ;**************************** _isr_timer ******
+                           A    41    ;Name                         Addr/Register   S
+                           A    42    ;_array                              STATIC    
+                           A    43    ;_0temp                              STATIC    
+                           A    44    
+                           A    45    
+                           A    46    ; Aggregate Stack Size: 0 (words)
+                           A    47    
+                           A    48    
+                           A    49    	.FRAME _n_isr_timer,?_n_isr_timer,RDATA
+                           A    50    	SEGMENT NEAR_BSS
+0000                       A    51    _0temp:
+0000                       A    52    	DS	1
+Zilog eZ8 Encore! Macro Assembler Version 2.53 (15022701) 24-Nov-16     20:12:10     page:   2
+
+
+PC     Object              I  Line    Source test.src
+                           A    53    ;    1	// Test application - blink leds on PAO
+                           A    54    ;    2	#include <ez8f1622.h>
+                           A    55    ;    3	
+                           A    56    ;    4	unsigned char array[]={1,3,7,15,31,63,1
+                           A    57    	SEGMENT test_TEXT
+                           A    58    ;    5	
+                           A    59    ;    6	void interrupt isr_timer(){
+0000                       A    60    _isr_timer:
+                           A    61    .define "_isr_timer"
+                           A    62    .value _isr_timer
+                           A    63    .class 2
+                           A    64    .type 65
+                           A    65    .endef
+                           A    66    .begfunc "isr_timer",6,"_isr_timer"
+                           A    67    ;    7		static unsigned char temp;
+                           A    68    .define "temp"
+                           A    69    .alias "_0temp"
+                           A    70    .class 147
+                           A    71    .value _0temp
+                           A    72    .type 12
+                           A    73    .endef
+0000 C8FFD0                A    74    	PUSHX	4093
+0003 E8 000FFD             A    75    	LDX	4093,__intrp
+0007 09100000              A    76    	ADDX	__intrp,#16
+000B 70EF                  A    77    	PUSH	R15
+000D 84FFFF                A    78    	LDX	R15,4095
+                           A    79    ;    8		PAOUT = array[temp++];
+                           A    80    .line 8
+0010 0C 00                 A    81    	LD	R0,#_array
+0012 04 00 E0              A    82    	ADD	R0,_0temp
+0015 950FD3                A    83    	LDX	4051,@R0
+0018 20 00                 A    84    	INC	_0temp
+                           A    85    ;    9		if (!array[temp]) temp=0;
+                           A    86    .line 9
+001A 0C 00                 A    87    	LD	R0,#_array
+001C 04 00 E0              A    88    	ADD	R0,_0temp
+001F A7E000                A    89    	CP	@R0,#0
+0022 EB 02                 A    90    	JR	NE,_1_L_2
+0024 B0 00                 A    91    	CLR	_0temp
+                           A    92    ;   10	}
+0026                       A    93    _1_L_2:
+                           A    94    .line 10
+0026 50EF                  A    95    	POP	R15
+0028 29100000              A    96    	SUBX	__intrp,#16
+002C D8FFD0                A    97    	POPX	4093
+002F BF                    A    98    	IRET	
+                           A    99    .endfunc "isr_timer",10,"_isr_timer"
+                           A   100    	SEGMENT ROM_DATA
+                           A   101    
+                           A   102    
+                           A   103    ;**************************** _main ***********
+                           A   104    ;Name                         Addr/Register   S
+Zilog eZ8 Encore! Macro Assembler Version 2.53 (15022701) 24-Nov-16     20:12:10     page:   3
+
+
+PC     Object              I  Line    Source test.src
+                           A   105    ;_EI                                 IMPORT  --
+                           A   106    ;_SET_VECTOR                         IMPORT  --
+                           A   107    
+                           A   108    
+                           A   109    ; Aggregate Stack Size: 0 (words)
+                           A   110    
+                           A   111    
+                           A   112    	.FRAME _n_main,?_n_main,RDATA
+                           A   113    	SEGMENT test_TEXT
+                           A   114    ;   11	
+                           A   115    ;   12	void main(){
+0030                       A   116    _main:
+                           A   117    .define "_main"
+                           A   118    .value _main
+                           A   119    .class 2
+                           A   120    .type 65
+                           A   121    .endef
+                           A   122    .begfunc "main",12,"_main"
+0030 70EF                  A   123    	PUSH	R15
+0032 84FFFF                A   124    	LDX	R15,4095
+                           A   125    ;   13		PAOUT = 0;
+                           A   126    .line 13
+0035 E9000FD3              A   127    	LDX	4051,#-0
+                           A   128    ;   14		SET_VECTOR(3,isr_timer);
+                           A   129    ;   15		T0R=0x7FFF;
+                           A   130    .line 15
+0039 E97F0F02              A   131    	LDX	3842,#127
+003D E9FF0F03              A   132    	LDX	3843,#255
+                           A   133    ;   16		T0CTL1=0xB8;
+                           A   134    .line 16
+0041 E9B80F07              A   135    	LDX	3847,#184
+                           A   136    ;   17		IRQ0ENL = 0x80;
+                           A   137    .line 17
+0045 E9800FC2              A   138    	LDX	4034,#128
+                           A   139    ;   18		EI();
+                           A   140    .line 18
+0049 9F                    A   141    	EI
+                           A   142    ;   19		while(1);
+004A                       A   143    _2_L_3:
+                           A   144    .line 19
+004A 8B FE                 A   145    	JR	_2_L_3
+                           A   146    ;   20	}
+                           A   147    .line 20
+004C 50EF                  A   148    	POP	R15
+004E AF                    A   149    	RET	
+                           A   150    .endfunc "main",20,"_main"
+0008 0000                  A   151    	VECTOR	TIMER2=_isr_timer
+                           A   152    	XREF __intrp:RDATA
+                           A   153    	XDEF _main
+                           A   154    	XDEF _isr_timer
+                           A   155    	XDEF _array
+                           A   156    	END
+Zilog eZ8 Encore! Macro Assembler Version 2.53 (15022701) 24-Nov-16     20:12:10     page:   4
+
+
+PC     Object              I  Line    Source 
+
+
+Errors: 0
+Warnings: 0
+Lines Assembled: 157

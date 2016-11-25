@@ -85,3 +85,4 @@ set_global_assignment -name SOURCE_FILE altsyncram1.cmp
 set_global_assignment -name VHDL_FILE altsyncram1.vhd
 set_global_assignment -name SOURCE_FILE altsyncram2.cmp
 set_global_assignment -name VHDL_FILE altsyncram2.vhd
+set_global_assignment -name VHDL_FILE fpz8_timer.vhd

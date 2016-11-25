@@ -1,17 +1,19 @@
--- FPz8 mk1
+-- FPz8 mk1 v0.99
 -- Zilog Z8 Encore! 100% compatible softcore
 -- Author: 	Fábio Pereira (fabio.jve@gmail.com)
+-- Version: 0.99	Nov, 24th, 2016	(changed LDWX instruction, interrupts, condition code function, debugger command processor)
+-- Version: 0.91	Nov, 15th, 2016
 -- Version:	0.9		Nov, 11th, 2016
 
--- FPz8 is a softcore 100% object-code compatible with the Z8 encore microcontroller line. Current implementation includes 
+-- FPz8 is a softcore almost 100% object-code compatible with the Z8 encore microcontroller line. Current implementation includes 
 -- 2kb of file registers (RAM), 16kb of program memory (using FPGA RAM), 8 vectored interrupts with programmable priority, 
 -- full-featured onchip debugger 100% compatible with Zilog's OCD and ZDS-II IDE.
 -- It was designed to work as a SoC and everything (except the USB chip) fits inside a single FPGA (I have used an Altera 
 -- Cyclone IV EP4CE6 device). The debugger connection makes use of a serial-to-USB chip (it is part of the low-cost FPGA 
 -- board used on the project).
 -- In a near future I plan to add some more features to the device (such as a timer and maybe other peripherals).
--- The idea behind the FPz8 was to learn more on VHDL and FPGAs (this is my second design using those technologies). I also 
--- believe the FPz8 can be a very interesting tool for learning/teaching about VHDL, computing and microprocessors/microcontrollers 
+-- The idea behind the FPz8 was to learn more on VHDL and FPGAs (this is my second design using these technologies). I also 
+-- believe FPz8 can be a very interesting tool for learning/teaching VHDL, computing and microprocessors/microcontrollers 
 -- programming.
 
 -- You are free to use and to modify FPz8 to fit your needs, except for comercial use (I don't expect anyone would do that anyway).
@@ -30,12 +32,12 @@
 -- 0xFFD - RP
 -- 0xFFE - SPH
 -- 0xFFF - SPL
--- Also notice INT7 is not physically present as it is planned to be used with the coming timer peripheral
 
 -- What else is missing from the original architecture?
--- A: no watchdog (WDT instruction runs as a NOP), no LDE and LDEI instructions (data memory related), no option bytes
+-- A: no watchdog (WDT instruction runs as a NOP), no LDE and LDEI instructions (data memory related), no option bytes,
+--    no data memory related debug commands, no CRC debug command, no ID bytes
 
--- FPz8 was tested on a EP4CE6 mini board (50MHz clock)
+-- FPz8 was tested on an EP4CE6 mini board (50MHz clock)
 -- http://www.ebay.com/itm/EP4CE6-Mini-Board-USB-Blaster-Altera-Cyclone-IV-FPGA-CPLD-Nano-Size-
 
 -- This work is licensed under the Creative Commons Attribution 4.0 International License.
@@ -51,10 +53,10 @@ entity fpz8_cpu_v1 IS
 	(
 		IAB			: buffer std_logic_vector(15 downto 0);	-- instruction address bus (16 bits)
 		IDB			: in std_logic_vector(7 downto 0);		-- instruction data bus (8 bits)
-		PWDB		: out std_logic_vector(7 downto 0);		-- program write data bus (8 bits)
-		MAB			: buffer std_logic_vector(11 downto 0);	-- memory address bus (12 bits)
-		MIDB		: in std_logic_vector(7 downto 0);		-- memory input data bus (8 bits)
-		MODB		: out std_logic_vector(7 downto 0);		-- memory output data bus (8 bits)
+		IWDB		: out std_logic_vector(7 downto 0);		-- instruction write data bus (8 bits)
+		FRAB		: buffer std_logic_vector(11 downto 0);	-- file register address bus (12 bits)
+		FRIDB		: in std_logic_vector(7 downto 0);		-- memory input data bus (8 bits)
+		FRODB		: out std_logic_vector(7 downto 0);		-- memory output data bus (8 bits)
 		RIDB		: in std_logic_vector(7 downto 0);		-- register input data bus (8 bits)
 		RODB		: out std_logic_vector(7 downto 0);		-- register output data bus (8 bits)		
 		PGM_WR		: out std_logic;						-- program memory write enable
@@ -68,14 +70,16 @@ entity fpz8_cpu_v1 IS
 		INT4		: in std_logic;							-- interrupt 4 input (vector 0x000E)
 		INT5		: in std_logic;							-- interrupt 5 input (vector 0x000C)
 		INT6		: in std_logic;							-- interrupt 6 input (vector 0x000A)
+		INT7		: in std_logic;							-- interrupt 7 input (vector 0x0008)
 		DBG_RX		: in std_logic;							-- debugger receive input
 		DBG_TX		: buffer std_logic;						-- debugger transmit output
 		PAOUT		: out std_logic_vector(7 downto 0);		-- port A output data
 		PAIN		: in std_logic_vector(7 downto 0);		-- port A input data
 		CLK			: in std_logic;							-- main clock
-		CLK_OUT		: out std_logic;						-- main gated-clock output
-		CLK_OUTN	: out std_logic;						-- main inverted-gated-clock output
+		CLK_OUT		: buffer std_logic;						-- main clock output
+		CLK_OUTN	: out std_logic;						-- main inverted clock output
 		STOP		: buffer std_logic;						-- stop output	 
+		RESET_OUT	: out std_logic;						-- reset output
 		RESET		: in std_logic							-- CPU reset			
 	);
 end fpz8_cpu_v1;
@@ -88,9 +92,7 @@ type Tflags is record
 end record;
 shared variable CPU_FLAGS, ALU_FLAGS		: Tflags;
 shared variable ALU_NOUPDATE				: std_logic;
-shared variable INT7						: std_logic;
 shared variable IRQE						: std_logic;
-shared variable HALT						: std_logic;
 shared variable IRQ0						: std_logic_vector(7 downto 0);		-- interrupts 0-7 flags
 shared variable IRQ0ENH,IRQ0ENL				: std_logic_vector(7 downto 0);		-- interrupts 0-7 enable high and low
 shared variable SP 							: std_logic_vector(11 downto 0);	-- stack pointer
@@ -101,6 +103,8 @@ signal 			RXSYNC1, RXSYNC2			: std_logic;
 ATTRIBUTE preserve							: boolean;
 ATTRIBUTE preserve OF RXSYNC1				: signal IS true;
 ATTRIBUTE preserve OF RXSYNC2				: signal IS true;
+signal IRQ0_LATCH							: std_logic_vector(7 downto 0);		-- current state of IRQ inputs
+attribute preserve of IRQ0_LATCH			: signal is true;
 
 constant ALU_ADD 	: std_logic_vector(3 downto 0):=x"0";	-- CZSVH D=0
 constant ALU_ADC 	: std_logic_vector(3 downto 0):=x"1";	-- CZSVH D=0
@@ -178,13 +182,13 @@ begin
 		elsif (ADDRESS=x"FD3") then ---------------------------------------------------- PAOUT register
 			PAOUT <= DATA;	
 			PAOUT_BUFFER := DATA;
-		else 
-			REG_SEL <= '1';
-			RODB <= DATA;
+		else -- if it is not an internal SFR but ADDRESS>=0xF00 then it is an external register
+			REG_SEL <= '1';	-- enable external register select
+			RODB <= DATA;	-- output data on register output data bus
 		end if;
-	else
-		MEM_SEL <= '1';
-		MODB <= DATA;
+	else	-- if ADDRESS < 0xF00 then it is a RAM register
+		MEM_SEL <= '1';		-- enable external memory select
+		FRODB <= DATA;		-- output data on file register output data bus
 	end if;		
 end datawrite;
 
@@ -213,7 +217,7 @@ begin
 		end if;
 	else
 		MEM_SEL <= '1';
-		return MIDB;
+		return FRIDB;
 	end if;		
 end DATAREAD;
 
@@ -225,35 +229,35 @@ begin
 		when x"0" =>
 			return '0';
 		when x"1" =>
-			return ALU_FLAGS.S xor ALU_FLAGS.V;
+			return CPU_FLAGS.S xor CPU_FLAGS.V;
 		when x"2" =>
-			return ALU_FLAGS.Z or (ALU_FLAGS.S xor ALU_FLAGS.V);
+			return CPU_FLAGS.Z or (CPU_FLAGS.S xor CPU_FLAGS.V);
 		when x"3" =>
-			return ALU_FLAGS.C or ALU_FLAGS.Z;
+			return CPU_FLAGS.C or CPU_FLAGS.Z;
 		when x"4" =>
-			return ALU_FLAGS.V;
+			return CPU_FLAGS.V;
 		when x"5" =>
-			return ALU_FLAGS.S;
+			return CPU_FLAGS.S;
 		when x"6" =>
-			return ALU_FLAGS.Z;
+			return CPU_FLAGS.Z;
 		when x"7" =>
-			return ALU_FLAGS.C;
+			return CPU_FLAGS.C;
 		when x"8" =>
 			return '1';
 		when x"9" =>
-			return NOT (ALU_FLAGS.S xor ALU_FLAGS.V);
+			return NOT (CPU_FLAGS.S xor CPU_FLAGS.V);
 		when x"A" =>
-			return NOT (ALU_FLAGS.Z or (ALU_FLAGS.S xor ALU_FLAGS.V));
+			return NOT (CPU_FLAGS.Z or (CPU_FLAGS.S xor CPU_FLAGS.V));
 		when x"B" =>
-			return (NOT ALU_FLAGS.C) AND (NOT ALU_FLAGS.Z);
+			return (NOT CPU_FLAGS.C) AND (NOT CPU_FLAGS.Z);
 		when x"C" =>
-			return NOT ALU_FLAGS.V;
+			return NOT CPU_FLAGS.V;
 		when x"D" =>
-			return NOT ALU_FLAGS.S;
+			return NOT CPU_FLAGS.S;
 		when x"E" =>
-			return NOT ALU_FLAGS.Z;
+			return NOT CPU_FLAGS.Z;
 		when others =>
-			return NOT ALU_FLAGS.C;
+			return NOT CPU_FLAGS.C;
 	end case;
 end CONDITIONCODE;
 		
@@ -279,7 +283,7 @@ begin
 	end if;
 end ADDRESSER8;
 
--- ADDRESSER12 generates a 12-bit address from a 4-bit address (using RP register)
+-- ADDRESSER4 generates a 12-bit address from a 4-bit address (using RP register)
 function ADDRESSER4
 	(	ADDR	: in std_logic_vector(3 downto 0)) return std_logic_vector is
 begin
@@ -464,25 +468,37 @@ begin
 end ADDER16;
 
 begin
-	clock_out: process(CLK)
+	clock_out: process(CLK,RESET)
+	variable CKDIVIDER		: integer range 0 to 2;
 	begin
-		CLK_OUTN <= not CLK;
-		CLK_OUT <= CLK;
-	end process;
+		if (RESET='1') then
+			CKDIVIDER := 0;
+			CLK_OUTN <= '1';
+			CLK_OUT <= '0';
+		elsif (rising_edge(CLK)) then
+			CLK_OUTN <= '1';
+			CLK_OUT <= '0';
+			CKDIVIDER := CKDIVIDER + 1;
+			if (CKDIVIDER=0) then	-- main clock (50MHz) is divided by 3, resulting in a 16.66MHz system clock
+				CLK_OUT <= '1';
+				CLK_OUTN <= '0';
+			end if;
+		end if;
+	end process;	-- clock_out process
 	-- main process controls debugging and instruction fetching and decoding along
-	main: process (CLK,RESET,DBG_RX)
+	main: process (CLK_OUT,RESET,DBG_RX)
 	-- CPU state machine
 	type Tcpu_state is (
 		CPU_DECOD,
-		CPU_INDRR,
-		CPU_MUL, CPU_MUL1, CPU_MUL2,
-		CPU_XADTOM,
-		CPU_MTOXAD, CPU_MTOXAD2,
-		CPU_XRTOM,
-		CPU_XRRTORR, CPU_XRRTORR2,
+		CPU_INDRR,						-- indirect rr mode
+		CPU_MUL, CPU_MUL1, CPU_MUL2,	-- MUL instruction
+		CPU_XADTOM,						-- address with offset to memory
+		CPU_MTOXAD, CPU_MTOXAD2,		-- memory to address with offset
+		CPU_XRTOM,						-- register with offset to memory
+		CPU_XRRTORR, CPU_XRRTORR2,		-- register pair with offset to register pair
 		CPU_XRRTORR3, CPU_XRRTORR4,
 		CPU_IMTOIRR, CPU_MTOIRR,		-- indirect and direct to indirect register pair addressing mode
-		CPU_IRRS, CPU_IRRS2,
+		CPU_IRRS, CPU_IRRS2,			-- indirect register pair as source
 		CPU_XRRD, CPU_XRRD2, CPU_XRRD3,	-- indexed rr pair as destination
 		CPU_XRRS, CPU_XRRS2, CPU_XRRS3,	-- indexed rr pair as source
 		CPU_IND1, CPU_IND2,				-- indirect memory access
@@ -491,26 +507,26 @@ begin
 		CPU_OMA,						-- One memory access instructions (immediate to/with register)
 		CPU_OMA2,						-- One memory access instructions (immediate to/with register) logic unit related
 		CPU_DMAB,						-- Decrement address bus (for word access)
-		CPU_LDW, CPU_LDW2,
-		CPU_LDPTOIM, CPU_LDPTOIM2,
-		CPU_LDPTOM, CPU_LDPTOM2,
-		CPU_LDPTOM3, CPU_LDPTOM4,
-		CPU_LDMTOP, CPU_LDMTOP2,
-		CPU_BIT,
-		CPU_IBTJ, CPU_BTJ,
-		CPU_DJNZ,
-		CPU_INDJUMP, CPU_INDJUMP2,
-		CPU_TRAP, CPU_TRAP2,
-		CPU_INDSTACK, CPU_INDSTACK2,
-		CPU_STACK, CPU_STACK1,
+		CPU_LDW, CPU_LDW2, CPU_LDW3,	-- load word instruction
+		CPU_LDW4, CPU_LDW5,
+		CPU_LDPTOIM, CPU_LDPTOIM2,		-- load program to indirect memory
+		CPU_LDPTOM, CPU_LDPTOM2,		-- load program to memory
+		CPU_LDPTOM3, CPU_LDPTOM4,		
+		CPU_LDMTOP, CPU_LDMTOP2,		-- load memory to program
+		CPU_BIT,						-- BIT instruction
+		CPU_IBTJ, CPU_BTJ,				-- BTJ instruction
+		CPU_DJNZ,						-- DJNZ instruction
+		CPU_INDJUMP, CPU_INDJUMP2,		-- indirect JP
+		CPU_TRAP, CPU_TRAP2,			-- TRAP instruction
+		CPU_INDSTACK, CPU_INDSTACK2,	-- indirect stacking
+		CPU_STACK, CPU_STACK1,			-- stacking operations
 		CPU_STACK2, CPU_STACK3,
-		CPU_UNSTACK, CPU_UNSTACK2,
-		CPU_UNSTACK3,
+		CPU_UNSTACK, CPU_UNSTACK2,		-- unstacking operations
+		CPU_UNSTACK3,					
 		CPU_STORE,						-- store results, no change to the flags
-		CPU_VECTOR, CPU_VECTOR2,
-		CPU_HALTED,
-		CPU_RESET,
-		CPU_ILLEGAL
+		CPU_VECTOR, CPU_VECTOR2,		-- vectoring stages
+		CPU_RESET,						-- reset state
+		CPU_ILLEGAL						-- illegal state
 	);
 	type Tfetch_state is (
 		F_ADDR,		-- instruction queue is initializing, reset pointers and empty queue
@@ -578,19 +594,20 @@ begin
 	variable DBG_CMD		: Tdbg_command;
 	variable CAN_FETCH		: std_logic;						-- controls whether the instruction queue can actually fetch opcodes
 	variable LU_INSTRUCTION	: std_logic;						-- indicates a LU2-related instruction
+	variable INT_FLAG		: std_logic;						-- indicates an interrupt
 	variable WORD_DATA		: std_logic;						-- indicates a 16-bit data instruction
+	variable HALT			: std_logic;						-- indicates the CPU is halted
 	variable PC 			: std_logic_vector(15 downto 0);	-- program counter
 	variable FETCH_ADDR		: std_logic_vector(15 downto 0);	-- next address to be fetched
 	variable DEST_ADDR16	: std_logic_vector(15 downto 0);	-- temporary 16-bit destination address
 	variable DEST_ADDR		: std_logic_vector(11 downto 0);	-- temporary 12-bit destination address
 	variable TEMP_DATA		: std_logic_vector(7 downto 0);		-- temporary 8-bit data
-	variable OLD_IRQ0		: std_logic_vector(7 downto 0);		-- previous state of IRQs
+	variable OLD_IRQ0		: std_logic_vector(7 downto 0);		-- previous state of IRQ inputs
 	variable INTVECT		: std_logic_vector(7 downto 0);		-- current interrupt vector (lower 8-bits)
 	variable RESULT			: std_logic_vector(7 downto 0);		-- temporary 8-bit result
 	variable TEMP_OP		: std_logic_vector(3 downto 0);		-- ALU/LU2 operation code
 	variable ATM_COUNTER	: integer range 0 to 3;				-- temporary interrupt disable counter (ATM instruction)
 	variable NUM_BYTES		: integer range 0 to 5;				-- number of bytes decoded
-	variable CKDIVIDER		: integer range 0 to 2;
 	type Tinstructionqueue is record
 		WRPOS				: integer range 0 to 7;				-- instruction queue write pointer
 		RDPOS				: integer range 0 to 7;				-- instruction queue read pointer
@@ -614,10 +631,11 @@ begin
 	variable OCD			: Tocdflags;
 		
 	begin
-		if (reset='1') then	-- reset operations		
+		RESET_OUT <= RESET or OCDCR.RST;
+		if (RESET='1') then	-- reset operations		
 			IAB <= x"0002";
-			MAB <= x"000";
-			PWDB <= x"00";
+			FRAB <= x"000";
+			IWDB <= x"00";
 			SP := x"000";
 			RP := x"00";
 			WR <= '0';
@@ -643,266 +661,277 @@ begin
 			IRQ0ENH := x"00";
 			IRQ0ENL := x"00";
 			ATM_COUNTER := 0;
-			CKDIVIDER := 0;
 			CPU_STATE := CPU_VECTOR;			
-		elsif (rising_edge(clk)) then
-			if (OLD_IRQ0(0)='0' and INT0='1') then IRQ0(0) := '1'; end if;
-			if (OLD_IRQ0(1)='0' and INT1='1') then IRQ0(1) := '1'; end if;
-			if (OLD_IRQ0(2)='0' and INT2='1') then IRQ0(2) := '1'; end if;
-			if (OLD_IRQ0(3)='0' and INT3='1') then IRQ0(3) := '1'; end if;
-			if (OLD_IRQ0(4)='0' and INT4='1') then IRQ0(4) := '1'; end if;
-			if (OLD_IRQ0(5)='0' and INT5='1') then IRQ0(5) := '1'; end if;
-			if (OLD_IRQ0(6)='0' and INT6='1') then IRQ0(6) := '1'; end if;
-			OLD_IRQ0 := INT7&INT6&INT5&INT4&INT3&INT2&INT1&INT0;
-			CKDIVIDER := CKDIVIDER + 1;
-			if (CKDIVIDER=0) then	-- main clock (50MHz) is divided by 3, resulting in a 16.66MHz system clock
-				WR <= '0';
-				PGM_WR <= '0';
-				
-				-- This is the instruction queue FSM
-				if (CAN_FETCH='1') then
-					if (IQUEUE.FETCH_STATE=F_ADDR) then
-						FETCH_ADDR := PC;
-						IAB <= PC;
-						IQUEUE.WRPOS := 0;
-						IQUEUE.RDPOS := 0;
-						IQUEUE.CNT := 0;						
-						IQUEUE.FETCH_STATE := F_READ;
-					else
-						if (IQUEUE.FULL='0') then
-							IQUEUE.QUEUE(IQUEUE.WRPOS) := IDB;
-							FETCH_ADDR := FETCH_ADDR + 1;
-							IAB <= FETCH_ADDR;
-							IQUEUE.WRPOS := IQUEUE.WRPOS + 1;
-							IQUEUE.CNT := IQUEUE.CNT + 1;
-						end if;
+		elsif (rising_edge(CLK_OUT)) then
+			IRQ0_LATCH <= INT7&INT6&INT5&INT4&INT3&INT2&INT1&INT0;
+			if (OLD_IRQ0(0)/=IRQ0_LATCH(0)) then IRQ0(0) := '1'; end if;
+			if (OLD_IRQ0(1)/=IRQ0_LATCH(1)) then IRQ0(1) := '1'; end if;
+			if (OLD_IRQ0(2)/=IRQ0_LATCH(2)) then IRQ0(2) := '1'; end if;
+			if (OLD_IRQ0(3)/=IRQ0_LATCH(3)) then IRQ0(3) := '1'; end if;
+			if (OLD_IRQ0(4)/=IRQ0_LATCH(4)) then IRQ0(4) := '1'; end if;
+			if (OLD_IRQ0(5)/=IRQ0_LATCH(5)) then IRQ0(5) := '1'; end if;
+			if (OLD_IRQ0(6)/=IRQ0_LATCH(6)) then IRQ0(6) := '1'; end if;
+			if (OLD_IRQ0(7)/=IRQ0_LATCH(7)) then IRQ0(7) := '1'; end if;
+			OLD_IRQ0 := IRQ0_LATCH;
+			
+			WR <= '0';
+			PGM_WR <= '0';
+			
+			-- start of instruction queue FSM
+			if (CAN_FETCH='1') then
+				if (IQUEUE.FETCH_STATE=F_ADDR) then
+					FETCH_ADDR := PC;
+					IAB <= PC;
+					IQUEUE.WRPOS := 0;
+					IQUEUE.RDPOS := 0;
+					IQUEUE.CNT := 0;						
+					IQUEUE.FETCH_STATE := F_READ;
+				else
+					if (IQUEUE.FULL='0') then
+						IQUEUE.QUEUE(IQUEUE.WRPOS) := IDB;
+						FETCH_ADDR := FETCH_ADDR + 1;
+						IAB <= FETCH_ADDR;
+						IQUEUE.WRPOS := IQUEUE.WRPOS + 1;
+						IQUEUE.CNT := IQUEUE.CNT + 1;
 					end if;
 				end if;
-				if (IQUEUE.CNT=7) then IQUEUE.FULL:='1'; else IQUEUE.FULL:='0'; 
-				end if;
-				-- This is the end of instruction queue FSM	
-								
-				-- These are the Debugger FSMs
-				DBG_UART.BAUDPRE := DBG_UART.BAUDPRE+1;
-				if (DBG_UART.BAUDPRE=0) then 
-					DBG_UART.BAUDCNTRX := DBG_UART.BAUDCNTRX+1;
-					DBG_UART.BAUDCNTTX := DBG_UART.BAUDCNTTX+1;
-				end if;
-				RXSYNC2 <= DBG_RX;
-				RXSYNC1 <= RXSYNC2;		
-				case DBG_UART.RX_STATE is
-					when DBGST_NOSYNC =>
-						DBG_UART.DBG_SYNC := '0';
-						DBG_UART.RX_DONE := '0';
-						DBG_CMD := DBG_WAIT_CMD;
-						DBG_UART.RX_STATE := DBGST_WAITSTART;
-					when DBGST_WAITSTART =>
-						if (RXSYNC1='0' and DBG_UART.LAST_SMP='1') then
-							DBG_UART.RX_STATE := DBGST_MEASURING;
-							DBG_UART.BAUDCNTRX := x"000";
+			end if;
+			if (IQUEUE.CNT=7) then IQUEUE.FULL:='1'; else IQUEUE.FULL:='0'; 
+			end if;
+			-- end of instruction queue FSM	
+							
+			-- start of debugger UART
+			DBG_UART.BAUDPRE := DBG_UART.BAUDPRE+1;	-- baudrate prescaler
+			if (DBG_UART.BAUDPRE=0) then 
+				DBG_UART.BAUDCNTRX := DBG_UART.BAUDCNTRX+1;
+				DBG_UART.BAUDCNTTX := DBG_UART.BAUDCNTTX+1;
+			end if;
+			RXSYNC2 <= DBG_RX;		-- DBG_RX input synchronization
+			RXSYNC1 <= RXSYNC2;		-- RXSYNC1 is a synchronized DBG_RX signal
+			case DBG_UART.RX_STATE is
+				when DBGST_NOSYNC =>
+					DBG_UART.DBG_SYNC := '0';
+					DBG_UART.RX_DONE := '0';
+					DBG_CMD := DBG_WAIT_CMD;
+					DBG_UART.RX_STATE := DBGST_WAITSTART;
+				when DBGST_WAITSTART =>
+					if (RXSYNC1='0' and DBG_UART.LAST_SMP='1') then
+						DBG_UART.RX_STATE := DBGST_MEASURING;
+						DBG_UART.BAUDCNTRX := x"000";
+					end if;
+				when DBGST_MEASURING =>
+					if (DBG_UART.BAUDCNTRX/=x"FFF") then 
+						if (RXSYNC1='1') then
+							DBG_UART.DBG_SYNC := '1';
+							DBG_UART.RX_STATE := DBGST_IDLE;
+							DBG_UART.BITTIMERX := "0000"&DBG_UART.BAUDCNTRX(11 downto 4);
+							DBG_UART.BITTIMETX := "000"&DBG_UART.BAUDCNTRX(11 downto 3);
 						end if;
-					when DBGST_MEASURING =>
-						if (DBG_UART.BAUDCNTRX/=x"FFF") then 
-							if (RXSYNC1='1') then
-								DBG_UART.DBG_SYNC := '1';
-								DBG_UART.RX_STATE := DBGST_IDLE;
-								DBG_UART.BITTIMERX := "0000"&DBG_UART.BAUDCNTRX(11 downto 4);
-								DBG_UART.BITTIMETX := "000"&DBG_UART.BAUDCNTRX(11 downto 3);
-							end if;
-						else
-							DBG_UART.RX_STATE := DBGST_NOSYNC;
-						end if;
-					when DBGST_IDLE =>
+					else
+						DBG_UART.RX_STATE := DBGST_NOSYNC;
+					end if;
+				when DBGST_IDLE =>
+					DBG_UART.BAUDCNTRX:=x"000";
+					DBG_UART.RXCNT:=0;
+					if (RXSYNC1='0' and DBG_UART.LAST_SMP='1') then	-- it's a start bit
+						DBG_UART.RX_STATE := DBGST_START;				
+					end if;
+				when DBGST_START =>
+					if (DBG_UART.BAUDCNTRX=DBG_UART.BITTIMERX) then
 						DBG_UART.BAUDCNTRX:=x"000";
-						DBG_UART.RXCNT:=0;
-						if (RXSYNC1='0' and DBG_UART.LAST_SMP='1') then	-- it's a start bit
-							DBG_UART.RX_STATE := DBGST_START;				
+						if (RXSYNC1='0') then
+							DBG_UART.RX_STATE := DBGST_RECEIVING;
+						else
+							DBG_UART.RX_STATE := DBGST_ERROR;
+							DBG_UART.TX_STATE := DBGTX_BREAK;
 						end if;
-					when DBGST_START =>
-						if (DBG_UART.BAUDCNTRX=DBG_UART.BITTIMERX) then
-							DBG_UART.BAUDCNTRX:=x"000";
-							if (RXSYNC1='0') then
-								DBG_UART.RX_STATE := DBGST_RECEIVING;
+					end if;
+				when DBGST_RECEIVING =>
+					if (DBG_UART.BAUDCNTRX=DBG_UART.BITTIMETX) then
+						DBG_UART.BAUDCNTRX:=x"000";
+						-- one bit time elapsed, sample RX input
+						DBG_UART.RXSHIFTREG := RXSYNC1 & DBG_UART.RXSHIFTREG(8 downto 1);
+						DBG_UART.RXCNT := DBG_UART.RXCNT + 1;
+						if (DBG_UART.RXCNT=9) then
+							if (RXSYNC1='1') then
+								-- if the stop bit is 1, rx is completed ok
+								DBG_UART.RX_DATA := DBG_UART.RXSHIFTREG(7 downto 0);
+								DBG_UART.RX_DONE := '1';
+								DBG_UART.RX_STATE := DBGST_IDLE;
 							else
+								-- if the stop bit is 0, it is a break char, reset receiver
 								DBG_UART.RX_STATE := DBGST_ERROR;
 								DBG_UART.TX_STATE := DBGTX_BREAK;
 							end if;
 						end if;
-					when DBGST_RECEIVING =>
-						if (DBG_UART.BAUDCNTRX=DBG_UART.BITTIMETX) then
-							DBG_UART.BAUDCNTRX:=x"000";
-							-- one bit time elapsed, sample RX input
-							DBG_UART.RXSHIFTREG := RXSYNC1 & DBG_UART.RXSHIFTREG(8 downto 1);
-							DBG_UART.RXCNT := DBG_UART.RXCNT + 1;
-							if (DBG_UART.RXCNT=9) then
-								if (RXSYNC1='1') then
-									-- if the stop bit is 1, rx is completed ok
-									DBG_UART.RX_DATA := DBG_UART.RXSHIFTREG(7 downto 0);
-									DBG_UART.RX_DONE := '1';
-									DBG_UART.RX_STATE := DBGST_IDLE;
-								else
-									-- if the stop bit is 0, it is a break char, reset receiver
-									DBG_UART.RX_STATE := DBGST_ERROR;
-									DBG_UART.TX_STATE := DBGTX_BREAK;
-								end if;
-							end if;
-						end if;
-					when others =>
-				end case;
-				DBG_UART.LAST_SMP := RXSYNC1;
-				case DBG_UART.TX_STATE is
-					when DBGTX_INIT =>
-						DBG_UART.TX_EMPTY := '1';
-						DBG_UART.TX_STATE:=DBGTX_IDLE;
-					when DBGTX_IDLE =>	-- UART is idle and not transmitting
-						DBG_TX <= '1';
-						if (DBG_UART.TX_EMPTY='0' and DBG_UART.DBG_SYNC='1') then	-- there is new data in TX_DATA register
-							DBG_UART.BAUDCNTTX:=x"000";
-							DBG_UART.TX_STATE := DBGTX_START;
-						end if;
-					when DBGTX_START =>
-						if (DBG_UART.BAUDCNTTX=DBG_UART.BITTIMETX) then
-							DBG_UART.BAUDCNTTX:=x"000";
-							DBG_UART.TXSHIFTREG := '1'&DBG_UART.TX_DATA;
-							DBG_UART.TXCNT := 10;
-							DBG_UART.TX_STATE := DBGTX_TRASMITTING;
-							DBG_TX <= '0';
-						end if;
-					when DBGTX_TRASMITTING =>	-- UART is shifting data
-						if (DBG_UART.BAUDCNTTX=DBG_UART.BITTIMETX) then
-							DBG_UART.BAUDCNTTX:=x"000";
-							DBG_TX <= DBG_UART.TXSHIFTREG(0);
-							DBG_UART.TXSHIFTREG := '1'&DBG_UART.TXSHIFTREG(8 downto 1);
-							DBG_UART.TXCNT :=DBG_UART.TXCNT - 1;
-							if (DBG_UART.TXCNT=0) then 
-								DBG_UART.TX_STATE:=DBGTX_IDLE;
-								DBG_UART.TX_EMPTY := '1';
-							end if;
-						end if;
-					when DBGTX_BREAK =>					
+					end if;
+				when others =>
+			end case;
+			DBG_UART.LAST_SMP := RXSYNC1;
+			case DBG_UART.TX_STATE is
+				when DBGTX_INIT =>
+					DBG_UART.TX_EMPTY := '1';
+					DBG_UART.TX_STATE:=DBGTX_IDLE;
+				when DBGTX_IDLE =>	-- UART is idle and not transmitting
+					DBG_TX <= '1';
+					if (DBG_UART.TX_EMPTY='0' and DBG_UART.DBG_SYNC='1') then	-- there is new data in TX_DATA register
 						DBG_UART.BAUDCNTTX:=x"000";
-						DBG_UART.TX_STATE:=DBGTX_BREAK2;
-					when DBGTX_BREAK2 =>
+						DBG_UART.TX_STATE := DBGTX_START;
+					end if;
+				when DBGTX_START =>
+					if (DBG_UART.BAUDCNTTX=DBG_UART.BITTIMETX) then
+						DBG_UART.BAUDCNTTX:=x"000";
+						DBG_UART.TXSHIFTREG := '1'&DBG_UART.TX_DATA;
+						DBG_UART.TXCNT := 10;
+						DBG_UART.TX_STATE := DBGTX_TRASMITTING;
 						DBG_TX <= '0';
-						DBG_UART.RX_STATE := DBGST_NOSYNC;
-						if (DBG_UART.BAUDCNTTX=x"FFF") then	
-							DBG_UART.TX_STATE:=DBGTX_INIT;
+					end if;
+				when DBGTX_TRASMITTING =>	-- UART is shifting data
+					if (DBG_UART.BAUDCNTTX=DBG_UART.BITTIMETX) then
+						DBG_UART.BAUDCNTTX:=x"000";
+						DBG_TX <= DBG_UART.TXSHIFTREG(0);
+						DBG_UART.TXSHIFTREG := '1'&DBG_UART.TXSHIFTREG(8 downto 1);
+						DBG_UART.TXCNT :=DBG_UART.TXCNT - 1;
+						if (DBG_UART.TXCNT=0) then 
+							DBG_UART.TX_STATE:=DBGTX_IDLE;
+							DBG_UART.TX_EMPTY := '1';
 						end if;
-				end case;		
-				if (RXSYNC1='0') then DBG_TX <='0';
-				end if;
-				case DBG_CMD is
-					when DBG_WAIT_CMD =>
-						if (DBG_UART.RX_DONE='1') then
-							case DBG_UART.RX_DATA is
-								when DBGCMD_READ_REV =>		DBG_CMD := DBG_SEND_REV;
-								when DBGCMD_READ_STATUS =>	DBG_CMD := DBG_SEND_STATUS;
-								when DBGCMD_WRITE_CTRL =>	DBG_CMD := DBG_WRITE_CTRL;
-								when DBGCMD_READ_CTRL =>	DBG_CMD := DBG_SEND_CTRL;
-								when DBGCMD_WRITE_PC =>		DBG_CMD := DBG_WRITE_PC;
-								when DBGCMD_READ_PC =>		DBG_CMD := DBG_SEND_PC;
-								when DBGCMD_WRITE_REG =>	DBG_CMD := DBG_WRITE_REG;
-								when DBGCMD_READ_REG =>		DBG_CMD := DBG_READ_REG;
-								when DBGCMD_WRITE_PROGRAM=>	DBG_CMD := DBG_WRITE_PROGMEM;
-								when DBGCMD_READ_PROGRAM=>	DBG_CMD := DBG_READ_PROGMEM;
-								when DBGCMD_STEP =>			DBG_CMD := DBG_STEP;
-								when DBGCMD_STUFF =>		DBG_CMD := DBG_STUFF;
-								when DBGCMD_EXEC =>			DBG_CMD := DBG_EXEC;
-								when others =>				
-							end case;
-							DBG_UART.RX_DONE:='0';
-						end if;
-					when DBG_SEND_REV =>
-						if (DBG_UART.TX_EMPTY='1') then
-							DBG_UART.TX_DATA:=x"01";
-							DBG_UART.TX_EMPTY:='0';
-							DBG_CMD := DBG_SEND_REV2;
-						end if;
-					when DBG_SEND_REV2 =>
-						if (DBG_UART.TX_EMPTY='1') then
-							DBG_UART.TX_DATA:=x"00";
-							DBG_UART.TX_EMPTY:='0';
-							DBG_CMD := DBG_WAIT_CMD;
-						end if;
-					when DBG_SEND_STATUS =>
-						if (DBG_UART.TX_EMPTY='1') then
-							DBG_UART.TX_DATA:=OCDCR.DBGMODE&HALT&"000000";
-							DBG_UART.TX_EMPTY:='0';
-							DBG_CMD := DBG_WAIT_CMD;
-						end if;
-					when DBG_WRITE_CTRL =>
-						if (DBG_UART.RX_DONE='1') then
-							DBG_UART.RX_DONE:='0';
-							OCDCR.DBGMODE := DBG_UART.RX_DATA(7);
-							OCDCR.BRKEN := DBG_UART.RX_DATA(6);
-							OCDCR.DBGACK := DBG_UART.RX_DATA(5);
-							OCDCR.BRKLOOP := DBG_UART.RX_DATA(4);
-							OCDCR.RST := DBG_UART.RX_DATA(0);
-							if (OCDCR.RST='1') then CPU_STATE:=CPU_RESET;
+					end if;
+				when DBGTX_BREAK =>					
+					DBG_UART.BAUDCNTTX:=x"000";
+					DBG_UART.TX_STATE:=DBGTX_BREAK2;
+				when DBGTX_BREAK2 =>
+					DBG_TX <= '0';
+					DBG_UART.RX_STATE := DBGST_NOSYNC;
+					if (DBG_UART.BAUDCNTTX=x"FFF") then	
+						DBG_UART.TX_STATE:=DBGTX_INIT;
+					end if;
+			end case;		
+			if (RXSYNC1='0') then DBG_TX <='0';	-- this mimics open-collector feature of OCD communication
+			end if;
+			-- end of the debugger UART		
+			
+			-- This is the instruction decoder
+			case CPU_STATE IS	
+				when CPU_DECOD =>
+					TEMP_OP := ALU_LD;					-- default ALU operation is load
+					LU_INSTRUCTION := '0';				-- default is ALU operation (instead of LU2)
+					INT_FLAG := '0';					-- reset temporary interrupt flag
+					WORD_DATA := '0';					-- default is 8-bit operation
+					INTVECT := x"00";					-- default vector is 0x00
+					NUM_BYTES := 0;						-- default instruction length is 0 bytes
+					
+					-- start of debugger command processor
+					case DBG_CMD is
+						when DBG_WAIT_CMD =>
+							if (DBG_UART.RX_DONE='1') then
+								case DBG_UART.RX_DATA is
+									when DBGCMD_READ_REV =>		DBG_CMD := DBG_SEND_REV;
+									when DBGCMD_READ_STATUS =>	DBG_CMD := DBG_SEND_STATUS;
+									when DBGCMD_WRITE_CTRL =>	DBG_CMD := DBG_WRITE_CTRL;
+									when DBGCMD_READ_CTRL =>	DBG_CMD := DBG_SEND_CTRL;
+									when DBGCMD_WRITE_PC =>		DBG_CMD := DBG_WRITE_PC;
+									when DBGCMD_READ_PC =>		DBG_CMD := DBG_SEND_PC;
+									when DBGCMD_WRITE_REG =>	DBG_CMD := DBG_WRITE_REG;
+									when DBGCMD_READ_REG =>		DBG_CMD := DBG_READ_REG;
+									when DBGCMD_WRITE_PROGRAM=>	DBG_CMD := DBG_WRITE_PROGMEM;
+									when DBGCMD_READ_PROGRAM=>	DBG_CMD := DBG_READ_PROGMEM;
+									when DBGCMD_STEP =>			DBG_CMD := DBG_STEP;
+									when DBGCMD_STUFF =>		DBG_CMD := DBG_STUFF;
+									when DBGCMD_EXEC =>			DBG_CMD := DBG_EXEC;
+									when others =>				
+								end case;
+								DBG_UART.RX_DONE:='0';
 							end if;
-							DBG_CMD := DBG_WAIT_CMD;
-						end if;
-					when DBG_SEND_CTRL =>
-						if (DBG_UART.TX_EMPTY='1') then
-							DBG_UART.TX_DATA:=OCDCR.DBGMODE&OCDCR.BRKEN&OCDCR.DBGACK&OCDCR.BRKLOOP&"000"&OCDCR.RST;
-							DBG_UART.TX_EMPTY:='0';
-							DBG_CMD := DBG_WAIT_CMD;
-						end if;			
-					when DBG_WRITE_PC =>
-						if (DBG_UART.RX_DONE='1' and OCDCR.DBGMODE='1') then
-							DBG_UART.RX_DONE:='0';
-							CAN_FETCH := '0';
-							PC(15 downto 8) := DBG_UART.RX_DATA;
-							DBG_CMD := DBG_WRITE_PC2;
-						end if;
-					when DBG_WRITE_PC2 =>
-						if (DBG_UART.RX_DONE='1') then
-							DBG_UART.RX_DONE:='0';
-							PC(7 downto 0) := DBG_UART.RX_DATA;
-							IQUEUE.FETCH_STATE := F_ADDR;
-							IQUEUE.CNT := 0;
-							CAN_FETCH := '1';
-							DBG_CMD := DBG_WAIT_CMD;
-						end if;
-					when DBG_SEND_PC =>
-						if (DBG_UART.TX_EMPTY='1') then
-							DBG_UART.TX_DATA:=PC(15 downto 8);
-							DBG_UART.TX_EMPTY:='0';
-							DBG_CMD := DBG_SEND_PC2;
-						end if;
-					when DBG_SEND_PC2 =>
-						if (DBG_UART.TX_EMPTY='1') then
-							DBG_UART.TX_DATA:=PC(7 downto 0);
-							DBG_UART.TX_EMPTY:='0';
-							DBG_CMD := DBG_WAIT_CMD;
-						end if;					
-					when DBG_WRITE_REG =>
-						DBG_UART.WRT := '1';
-						DBG_CMD := DBG_REG;
-					when DBG_READ_REG =>
-						DBG_UART.WRT := '0';
-						DBG_CMD := DBG_REG;					
-					when DBG_REG =>
-						if (DBG_UART.RX_DONE='1' and OCDCR.DBGMODE='1') then
-							CAN_FETCH := '0';
-							MAB(11 downto 8) <= DBG_UART.RX_DATA(3 downto 0);
-							DBG_UART.RX_DONE:='0';
-							DBG_CMD := DBG_REG2;
-						end if;
-					when DBG_REG2 =>
-						if (DBG_UART.RX_DONE='1') then
-							MAB(7 downto 0) <= DBG_UART.RX_DATA;
-							DBG_UART.RX_DONE:='0';
-							DBG_CMD := DBG_REG3;
-						end if;
-					when DBG_REG3 =>
-						if (DBG_UART.RX_DONE='1') then
-							DBG_UART.SIZE := x"00"&DBG_UART.RX_DATA;
-							DBG_UART.RX_DONE:='0';
-							DBG_CMD := DBG_REG4;
-						end if;
-					when DBG_REG4 =>
-						if (OCDCR.DBGMODE='1') then
+						when DBG_SEND_REV =>	-- read revision first byte
+							if (DBG_UART.TX_EMPTY='1') then
+								DBG_UART.TX_DATA:=x"01";
+								DBG_UART.TX_EMPTY:='0';
+								DBG_CMD := DBG_SEND_REV2;
+							end if;
+						when DBG_SEND_REV2 =>	-- read revision second byte
+							if (DBG_UART.TX_EMPTY='1') then
+								DBG_UART.TX_DATA:=x"00";
+								DBG_UART.TX_EMPTY:='0';
+								DBG_CMD := DBG_WAIT_CMD;
+							end if;
+						when DBG_SEND_STATUS =>	-- read OCD status
+							if (DBG_UART.TX_EMPTY='1') then
+								DBG_UART.TX_DATA:=OCDCR.DBGMODE&HALT&"000000";
+								DBG_UART.TX_EMPTY:='0';
+								DBG_CMD := DBG_WAIT_CMD;
+							end if;
+						when DBG_WRITE_CTRL =>	-- write OCD control register
+							if (DBG_UART.RX_DONE='1') then
+								DBG_UART.RX_DONE:='0';
+								OCDCR.DBGMODE := DBG_UART.RX_DATA(7);
+								OCDCR.BRKEN := DBG_UART.RX_DATA(6);
+								OCDCR.DBGACK := DBG_UART.RX_DATA(5);
+								OCDCR.BRKLOOP := DBG_UART.RX_DATA(4);
+								OCDCR.RST := DBG_UART.RX_DATA(0);
+								if (OCDCR.RST='1') then CPU_STATE:=CPU_RESET;
+								end if;
+								DBG_CMD := DBG_WAIT_CMD;
+							end if;
+						when DBG_SEND_CTRL =>	-- read OCD control register
+							if (DBG_UART.TX_EMPTY='1') then
+								DBG_UART.TX_DATA:=OCDCR.DBGMODE&OCDCR.BRKEN&OCDCR.DBGACK&OCDCR.BRKLOOP&"000"&OCDCR.RST;
+								DBG_UART.TX_EMPTY:='0';
+								DBG_CMD := DBG_WAIT_CMD;
+							end if;			
+						when DBG_WRITE_PC =>	-- write PC high byte
+							if (DBG_UART.RX_DONE='1' and OCDCR.DBGMODE='1') then
+								DBG_UART.RX_DONE:='0';
+								CAN_FETCH := '0';
+								PC(15 downto 8) := DBG_UART.RX_DATA;
+								DBG_CMD := DBG_WRITE_PC2;
+							end if;
+						when DBG_WRITE_PC2 =>	-- write PC low byte
+							if (DBG_UART.RX_DONE='1') then
+								DBG_UART.RX_DONE:='0';
+								PC(7 downto 0) := DBG_UART.RX_DATA;
+								IQUEUE.FETCH_STATE := F_ADDR;
+								IQUEUE.CNT := 0;
+								CAN_FETCH := '1';
+								DBG_CMD := DBG_WAIT_CMD;
+							end if;
+						when DBG_SEND_PC =>		-- read PC high byte
+							if (DBG_UART.TX_EMPTY='1') then
+								DBG_UART.TX_DATA:=PC(15 downto 8);
+								DBG_UART.TX_EMPTY:='0';
+								DBG_CMD := DBG_SEND_PC2;
+							end if;
+						when DBG_SEND_PC2 =>	-- read PC high byte
+							if (DBG_UART.TX_EMPTY='1') then
+								DBG_UART.TX_DATA:=PC(7 downto 0);
+								DBG_UART.TX_EMPTY:='0';
+								DBG_CMD := DBG_WAIT_CMD;
+							end if;					
+						when DBG_WRITE_REG =>	-- write to SFR/user registers
+							DBG_UART.WRT := '1';
+							DBG_CMD := DBG_REG;
+						when DBG_READ_REG =>	-- read SFR/user registers
+							DBG_UART.WRT := '0';
+							DBG_CMD := DBG_REG;					
+						when DBG_REG =>			-- proceed with register read/write
+							if (DBG_UART.RX_DONE='1' and OCDCR.DBGMODE='1') then
+								FRAB(11 downto 8) <= DBG_UART.RX_DATA(3 downto 0);
+								DBG_UART.RX_DONE:='0';
+								DBG_CMD := DBG_REG2;
+							end if;
+						when DBG_REG2 =>
+							if (DBG_UART.RX_DONE='1') then
+								FRAB(7 downto 0) <= DBG_UART.RX_DATA;
+								DBG_UART.RX_DONE:='0';
+								DBG_CMD := DBG_REG3;
+							end if;
+						when DBG_REG3 =>
+							if (DBG_UART.RX_DONE='1') then
+								DBG_UART.SIZE := x"00"&DBG_UART.RX_DATA;
+								DBG_UART.RX_DONE:='0';
+								DBG_CMD := DBG_REG4;
+							end if;
+						when DBG_REG4 =>
 							if (DBG_UART.WRT='1') then
 								if (DBG_UART.RX_DONE='1') then
 									CPU_STATE := CPU_OMA;
@@ -912,129 +941,116 @@ begin
 								end if;
 							else
 								if (DBG_UART.TX_EMPTY='1') then
-									DBG_UART.TX_DATA:=DATAREAD(MAB);
+									DBG_UART.TX_DATA:=DATAREAD(FRAB);
 									DBG_UART.TX_EMPTY:='0';
 									DBG_CMD := DBG_REG5;
 								end if;
 							end if;
-						end if;
-					when DBG_REG5 =>
-						if (CPU_STATE=CPU_DECOD) then
-							MAB <= MAB + 1;
+						when DBG_REG5 =>
+							FRAB <= FRAB + 1;
 							DBG_UART.SIZE := DBG_UART.SIZE - 1;
 							if (DBG_UART.SIZE=x"0000") then
 								DBG_CMD := DBG_WAIT_CMD; 
-								CAN_FETCH := '1';
 							else DBG_CMD := DBG_REG4;
 							end if;
-						end if;
-					when DBG_WRITE_PROGMEM =>
-						DBG_UART.WRT := '1';
-						DBG_CMD := DBG_PROGMEM;
-					when DBG_READ_PROGMEM =>
-						DBG_UART.WRT := '0';
-						DBG_CMD := DBG_PROGMEM;					
-					when DBG_PROGMEM =>
-						if (DBG_UART.RX_DONE='1') then
-							CAN_FETCH := '0';
-							IAB(15 downto 8) <= DBG_UART.RX_DATA;
-							DBG_UART.RX_DONE:='0';
-							DBG_CMD := DBG_PROGMEM2;
-						end if;
-					when DBG_PROGMEM2 =>
-						if (DBG_UART.RX_DONE='1') then
-							IAB(7 downto 0) <= DBG_UART.RX_DATA;
-							DBG_UART.RX_DONE:='0';
-							DBG_CMD := DBG_PROGMEM3;
-						end if;					
-					when DBG_PROGMEM3 =>
-						if (DBG_UART.RX_DONE='1') then
-							DBG_UART.SIZE(15 downto 8) := DBG_UART.RX_DATA;
-							DBG_UART.RX_DONE:='0';
-							DBG_CMD := DBG_PROGMEM4;
-						end if;					
-					when DBG_PROGMEM4 =>
-						if (DBG_UART.RX_DONE='1') then
-							DBG_UART.SIZE(7 downto 0) := DBG_UART.RX_DATA;
-							DBG_UART.RX_DONE:='0';
-							DBG_CMD := DBG_PROGMEM5;
-						end if;
-					when DBG_PROGMEM5 =>
-						if (DBG_UART.WRT='1') then
+						when DBG_WRITE_PROGMEM =>
+							DBG_UART.WRT := '1';
+							DBG_CMD := DBG_PROGMEM;
+						when DBG_READ_PROGMEM =>
+							DBG_UART.WRT := '0';
+							DBG_CMD := DBG_PROGMEM;					
+						when DBG_PROGMEM =>
 							if (DBG_UART.RX_DONE='1') then
-								PWDB <= DBG_UART.RX_DATA;
+								CAN_FETCH := '0';
+								IAB(15 downto 8) <= DBG_UART.RX_DATA;
 								DBG_UART.RX_DONE:='0';
-								PGM_WR <= '1';
-								DBG_CMD := DBG_PROGMEM6;
+								DBG_CMD := DBG_PROGMEM2;
 							end if;
-						else
-							if (DBG_UART.TX_EMPTY='1') then
-								DBG_UART.TX_DATA:=IDB;
-								DBG_UART.TX_EMPTY:='0';
-								DBG_CMD := DBG_PROGMEM6;
+						when DBG_PROGMEM2 =>
+							if (DBG_UART.RX_DONE='1') then
+								IAB(7 downto 0) <= DBG_UART.RX_DATA;
+								DBG_UART.RX_DONE:='0';
+								DBG_CMD := DBG_PROGMEM3;
+							end if;					
+						when DBG_PROGMEM3 =>
+							if (DBG_UART.RX_DONE='1') then
+								DBG_UART.SIZE(15 downto 8) := DBG_UART.RX_DATA;
+								DBG_UART.RX_DONE:='0';
+								DBG_CMD := DBG_PROGMEM4;
+							end if;					
+						when DBG_PROGMEM4 =>
+							if (DBG_UART.RX_DONE='1') then
+								DBG_UART.SIZE(7 downto 0) := DBG_UART.RX_DATA;
+								DBG_UART.RX_DONE:='0';
+								DBG_CMD := DBG_PROGMEM5;
 							end if;
-						end if;
-					when DBG_PROGMEM6 =>
-						IAB <= IAB + 1;
-						DBG_UART.SIZE := DBG_UART.SIZE - 1;
-						if (DBG_UART.SIZE=x"0000") then 
-							DBG_CMD := DBG_WAIT_CMD; 
-							CAN_FETCH := '1';
-							IQUEUE.CNT := 0;
-							IQUEUE.FETCH_STATE := F_ADDR;						
-						else DBG_CMD := DBG_PROGMEM5;
-						end if;
-					when DBG_STEP =>
-						OCD.SINGLESTEP:='1';
-						IQUEUE.FETCH_STATE := F_ADDR;
-						DBG_CMD := DBG_WAIT_CMD;
-					when DBG_STUFF =>
-						if (DBG_UART.RX_DONE='1' and OCDCR.DBGMODE='1') then
-							IQUEUE.QUEUE(IQUEUE.RDPOS) := DBG_UART.RX_DATA;
-							DBG_UART.RX_DONE:='0';
-							DBG_CMD := DBG_STEP;
-						end if;
-					when DBG_EXEC =>
-						if (OCDCR.DBGMODE='1') then
-							OCD.SINGLESTEP:='1';
-							CAN_FETCH:='0';
-							IQUEUE.CNT := 0;
-							IQUEUE.FETCH_STATE := F_ADDR;
-						end if;
-						DBG_CMD := DBG_EXEC2;
-					when DBG_EXEC2 =>
-						if (DBG_UART.RX_DONE='1') then
-							if (OCDCR.DBGMODE='0') then DBG_CMD := DBG_WAIT_CMD;
+						when DBG_PROGMEM5 =>
+							if (DBG_UART.WRT='1') then
+								if (DBG_UART.RX_DONE='1') then
+									IWDB <= DBG_UART.RX_DATA;
+									DBG_UART.RX_DONE:='0';
+									PGM_WR <= '1';
+									DBG_CMD := DBG_PROGMEM6;
+								end if;
 							else
-								IQUEUE.QUEUE(IQUEUE.WRPOS) := DBG_UART.RX_DATA;
-								DBG_UART.RX_DONE:='0';
-								IQUEUE.WRPOS := IQUEUE.WRPOS + 1;
-								IQUEUE.CNT := IQUEUE.CNT + 1;
-								DBG_CMD := DBG_EXEC3;
+								if (DBG_UART.TX_EMPTY='1') then
+									DBG_UART.TX_DATA:=IDB;
+									DBG_UART.TX_EMPTY:='0';
+									DBG_CMD := DBG_PROGMEM6;
+								end if;
 							end if;
-						end if;
-					when DBG_EXEC3 =>
-						if (OCD.SINGLESTEP='1') then DBG_CMD := DBG_EXEC2; else 
-							DBG_CMD := DBG_WAIT_CMD;
-							CAN_FETCH:='0';
+						when DBG_PROGMEM6 =>
+							IAB <= IAB + 1;
+							DBG_UART.SIZE := DBG_UART.SIZE - 1;
+							if (DBG_UART.SIZE=x"0000") then 
+								DBG_CMD := DBG_WAIT_CMD; 
+								CAN_FETCH := '1';
+								IQUEUE.CNT := 0;
+								IQUEUE.FETCH_STATE := F_ADDR;						
+							else DBG_CMD := DBG_PROGMEM5;
+							end if;
+						when DBG_STEP =>
+							OCD.SINGLESTEP:='1';
 							IQUEUE.FETCH_STATE := F_ADDR;
-						end if;
-					when others =>
-				end case;
-				-- This is the end of the debugger code		
-				
-				-- This is the main instruction decoder
-				case CPU_STATE IS	
-				when CPU_DECOD =>
-					TEMP_OP := ALU_LD;					-- default ALU operation is load
-					LU_INSTRUCTION := '0';				-- default is ALU operation (instead of LU2)
-					WORD_DATA := '0';					-- default is 8-bit operation
-					INTVECT := x"00";					-- default vector is 0x00
-					NUM_BYTES := 0;						-- default instruction length is 0 bytes
+							DBG_CMD := DBG_WAIT_CMD;
+						when DBG_STUFF =>
+							if (DBG_UART.RX_DONE='1' and OCDCR.DBGMODE='1') then
+								IQUEUE.QUEUE(IQUEUE.RDPOS) := DBG_UART.RX_DATA;
+								DBG_UART.RX_DONE:='0';
+								DBG_CMD := DBG_STEP;
+							end if;
+						when DBG_EXEC =>
+							if (OCDCR.DBGMODE='1') then
+								OCD.SINGLESTEP:='1';
+								CAN_FETCH:='0';
+								IQUEUE.CNT := 0;
+								IQUEUE.FETCH_STATE := F_ADDR;
+							end if;
+							DBG_CMD := DBG_EXEC2;
+						when DBG_EXEC2 =>
+							if (DBG_UART.RX_DONE='1') then
+								if (OCDCR.DBGMODE='0') then DBG_CMD := DBG_WAIT_CMD;
+								else
+									IQUEUE.QUEUE(IQUEUE.WRPOS) := DBG_UART.RX_DATA;
+									DBG_UART.RX_DONE:='0';
+									IQUEUE.WRPOS := IQUEUE.WRPOS + 1;
+									IQUEUE.CNT := IQUEUE.CNT + 1;
+									DBG_CMD := DBG_EXEC3;
+								end if;
+							end if;
+						when DBG_EXEC3 =>
+							if (OCD.SINGLESTEP='1') then DBG_CMD := DBG_EXEC2; else 
+								DBG_CMD := DBG_WAIT_CMD;
+								IQUEUE.FETCH_STATE := F_ADDR;
+							end if;
+						when others =>
+					end case;
+					-- end of debugger command processor
+					
 					if (ATM_COUNTER/=3) then ATM_COUNTER := ATM_COUNTER+1;
 					else	-- interrupt processing *****************************************************************************
 						if (IRQE='1') then	-- if interrupts are enabled
-							-- first the highest priority interrupts
+							-- first the highest priority level interrupts
 							if ((IRQ0(7)='1') and (IRQ0ENH(7)='1') and IRQ0ENL(7)='1') then
 								INTVECT:=x"08";
 								IRQ0(7):='0';
@@ -1111,744 +1127,748 @@ begin
 								IRQ0(0):='0';						
 							end if;
 							if (INTVECT/=x"00") then
-								DEST_ADDR16 := PC;
-								IAB <= x"00"&INTVECT;	-- build the address of the interrupt vector
-								SP := SP - 1;			-- prepare stack pointer by decrementing it
-								MAB <= SP;				-- put SP on MAB
-								CAN_FETCH := '0';		-- disable instruction fetching
-								IQUEUE.CNT := 0;		-- empty instruction queue
-								STOP <= '0';			-- disable stop bit
-								LU_INSTRUCTION := '1';	-- the stacking uses this bit to flag it is an interrupt stacking operation
-								CPU_STATE := CPU_STACK;
+								if (OCDCR.DBGMODE='0' or (OCDCR.DBGMODE='1' and OCD.SINGLESTEP='1')) then
+									DEST_ADDR16 := PC;
+									IAB <= x"00"&INTVECT;	-- build the interrupt vector address
+									SP := SP - 1;			-- prepare stack pointer by decrementing it
+									FRAB <= SP;				-- put SP on FRAB
+									CAN_FETCH := '0';		-- disable instruction fetching
+									OCD.SINGLESTEP := '0';	-- disable stepping
+									IQUEUE.CNT := 0;		-- set queue empty
+									STOP <= '0';			-- disable stop bit
+									HALT := '0';			-- disable halt mode
+									INT_FLAG := '1';		-- signal it is an interrupt stacking operation
+									CPU_STATE := CPU_VECTOR;
+								end if;
 							end if;
-						end if;
-					end if;
-					
-					if (OCDCR.DBGMODE='0' or (OCDCR.DBGMODE='1' and OCD.SINGLESTEP='1')) then
-						------------------------------------------------------------------------------------------------------------------------------
-						--**************************************************************************************************************************--
-						--                                                     5-byte instructions                                                  --
-						--**************************************************************************************************************************--
-						------------------------------------------------------------------------------------------------------------------------------
-						if (IQUEUE.CNT>=5) then
-							---------------------------------------------------------------------------------------------------- 2nd page instructions
-							if (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"1F") then
-								---------------------------------------------------------------------------------------------- CPC ER2,ER1 instruction
-								if (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"A8") then
-									MAB <= ADDRESSER12((IQUEUE.QUEUE(IQUEUE.RDPOS+3)(3 downto 0)) & IQUEUE.QUEUE(IQUEUE.RDPOS+4));
-									DEST_ADDR := ADDRESSER12((IQUEUE.QUEUE(IQUEUE.RDPOS+2)) & IQUEUE.QUEUE(IQUEUE.RDPOS+3)(7 downto 4));
+						end if; -- if IRQE=1
+					end if;	-- if ATM_COUNTER...
+					if (STOP='0' and HALT='0') then
+						if (OCDCR.DBGMODE='0' or (OCDCR.DBGMODE='1' and OCD.SINGLESTEP='1')) then
+							------------------------------------------------------------------------------------------------------------------------------
+							--**************************************************************************************************************************--
+							--                                                     5-byte instructions                                                  --
+							--**************************************************************************************************************************--
+							------------------------------------------------------------------------------------------------------------------------------
+							if (IQUEUE.CNT>=5) then	-- 5-byte instructions
+								---------------------------------------------------------------------------------------------------- 2nd page instructions
+								if (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"1F") then
+									---------------------------------------------------------------------------------------------- CPC ER2,ER1 instruction
+									if (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"A8") then
+										FRAB <= ADDRESSER12((IQUEUE.QUEUE(IQUEUE.RDPOS+3)(3 downto 0)) & IQUEUE.QUEUE(IQUEUE.RDPOS+4));
+										DEST_ADDR := ADDRESSER12((IQUEUE.QUEUE(IQUEUE.RDPOS+2)) & IQUEUE.QUEUE(IQUEUE.RDPOS+3)(7 downto 4));
+										TEMP_OP := ALU_CPC;
+										NUM_BYTES := 5;
+										CPU_STATE := CPU_TMA;
+									---------------------------------------------------------------------------------------------- CPC IMM,ER1 instruction
+									elsif (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"A9") then
+										FRAB <= ADDRESSER12((IQUEUE.QUEUE(IQUEUE.RDPOS+3)(3 downto 0)) & IQUEUE.QUEUE(IQUEUE.RDPOS+4));
+										TEMP_DATA := IQUEUE.QUEUE(IQUEUE.RDPOS+2);
+										TEMP_OP := ALU_CPC;
+										NUM_BYTES := 5;
+										CPU_STATE := CPU_OMA;
+									--------------------------------------------------------------------------------------------- LDWX ER1,ER2 instruction
+									elsif (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"E8") then
+										FRAB <= ADDRESSER12((IQUEUE.QUEUE(IQUEUE.RDPOS+2)) & IQUEUE.QUEUE(IQUEUE.RDPOS+3)(7 downto 4));
+										DEST_ADDR := ADDRESSER12((IQUEUE.QUEUE(IQUEUE.RDPOS+3)(3 downto 0)) & IQUEUE.QUEUE(IQUEUE.RDPOS+4));
+										NUM_BYTES := 5;
+										CPU_STATE := CPU_LDW;						
+									end if;
+								end if;
+							end if;
+							
+							------------------------------------------------------------------------------------------------------------------------------
+							--**************************************************************************************************************************--
+							--                                                     4-byte instructions                                                  --
+							--**************************************************************************************************************************--
+							------------------------------------------------------------------------------------------------------------------------------
+							if (IQUEUE.CNT>=4) then	-- 4-byte instructions
+								if (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"9") then	------------------------------------------------ column 9 instructions
+									case IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4) is
+										when x"8" =>	------------------------------------------------------------------------- LDX rr1,r2,X instruction
+										when x"9" =>	------------------------------------------------------------------------ LEA rr1,rr2,X instruction
+										when x"C" =>
+											CPU_STATE := CPU_ILLEGAL;
+										when x"D" =>
+											CPU_STATE := CPU_ILLEGAL;
+										when x"F" =>
+											CPU_STATE := CPU_ILLEGAL;
+										when others =>	-------------------------------------------------------------- IM,ER1 addressing mode instructions
+											FRAB <= ADDRESSER12((IQUEUE.QUEUE(IQUEUE.RDPOS+2)(3 downto 0)) & IQUEUE.QUEUE(IQUEUE.RDPOS+3));
+											TEMP_DATA := IQUEUE.QUEUE(IQUEUE.RDPOS+1);
+											TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
+											NUM_BYTES := 4;
+											CPU_STATE := CPU_OMA;																		
+									end case;						
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"8") then	-------------------------------------------- column 8 instructions
+									case IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4) is
+										when x"8" =>	------------------------------------------------------------------------- LDX r1,rr2,X instruction
+										when x"9" =>	-------------------------------------------------------------------------- LEA r1,r2,X instruction
+										when x"C" =>	-------------------------------------------------------------------------------- PUSHX instruction
+										when x"D" =>	--------------------------------------------------------------------------------- POPX instruction
+										when x"F" =>
+											CPU_STATE := CPU_ILLEGAL;
+										when others =>	------------------------------------------------------------- ER2,ER1 addressing mode instructions
+											FRAB <= ADDRESSER12((IQUEUE.QUEUE(IQUEUE.RDPOS+1)) & IQUEUE.QUEUE(IQUEUE.RDPOS+2)(7 downto 4));
+											DEST_ADDR := ADDRESSER12((IQUEUE.QUEUE(IQUEUE.RDPOS+2)(3 downto 0)) & IQUEUE.QUEUE(IQUEUE.RDPOS+3));
+											TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
+											NUM_BYTES := 4;
+											CPU_STATE := CPU_TMA;																			
+									end case;
+								---------------------------------------------------------------------------------------------------- 2nd page instructions
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"1F") then
+									------------------------------------------------------------------------------------------------ CPC R2,R1 instruction
 									TEMP_OP := ALU_CPC;
-									NUM_BYTES := 5;
-									CPU_STATE := CPU_TMA;
-								---------------------------------------------------------------------------------------------- CPC IMM,ER1 instruction
-								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"A9") then
-									MAB <= ADDRESSER12((IQUEUE.QUEUE(IQUEUE.RDPOS+3)(3 downto 0)) & IQUEUE.QUEUE(IQUEUE.RDPOS+4));
-									TEMP_DATA := IQUEUE.QUEUE(IQUEUE.RDPOS+2);
-									TEMP_OP := ALU_CPC;
-									NUM_BYTES := 5;
-									CPU_STATE := CPU_OMA;
-								--------------------------------------------------------------------------------------------- LDWX ER1,ER2 instruction
-								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"E8") then
-									MAB <= ADDRESSER12((IQUEUE.QUEUE(IQUEUE.RDPOS+3)(3 downto 0)) & IQUEUE.QUEUE(IQUEUE.RDPOS+4));
-									DEST_ADDR := ADDRESSER12((IQUEUE.QUEUE(IQUEUE.RDPOS+2)) & IQUEUE.QUEUE(IQUEUE.RDPOS+3)(7 downto 4));
-									NUM_BYTES := 5;
-									CPU_STATE := CPU_LDW;						
+									if (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"A4") then
+										FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+3));
+										DEST_ADDR := ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+2));
+										NUM_BYTES := 4;
+										CPU_STATE := CPU_TMA;
+									----------------------------------------------------------------------------------------------- CPC IR2,R1 instruction
+									elsif (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"A5") then
+										DEST_ADDR := ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+3));
+										FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+2));
+										NUM_BYTES := 4;
+										CPU_STATE := CPU_ISMD1;
+									----------------------------------------------------------------------------------------------- CPC R1,IMM instruction
+									elsif (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"A6") then
+										FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+2));
+										TEMP_DATA := IQUEUE.QUEUE(IQUEUE.RDPOS+3);
+										NUM_BYTES := 4;
+										CPU_STATE := CPU_OMA;
+									---------------------------------------------------------------------------------------------- CPC IR1,IMM instruction
+									elsif (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"A7") then
+										FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+2));
+										TEMP_DATA := IQUEUE.QUEUE(IQUEUE.RDPOS+3);
+										NUM_BYTES := 4;
+										CPU_STATE := CPU_IND1;						
+									end if;
 								end if;
 							end if;
-						end if;
-						
-						------------------------------------------------------------------------------------------------------------------------------
-						--**************************************************************************************************************************--
-						--                                                     4-byte instructions                                                  --
-						--**************************************************************************************************************************--
-						------------------------------------------------------------------------------------------------------------------------------
-						if (IQUEUE.CNT>=4) then
-							if (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"9") then	------------------------------------------------ column 9 instructions
-								case IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4) is
-									when x"8" =>	------------------------------------------------------------------------- LDX rr1,r2,X instruction
-									when x"9" =>	------------------------------------------------------------------------ LEA rr1,rr2,X instruction
-									when x"C" =>
-										CPU_STATE := CPU_ILLEGAL;
-									when x"D" =>
-										CPU_STATE := CPU_ILLEGAL;
-									when x"F" =>
-										CPU_STATE := CPU_ILLEGAL;
-									when others =>	-------------------------------------------------------------- IM,ER1 addressing mode instructions
-										MAB <= ADDRESSER12((IQUEUE.QUEUE(IQUEUE.RDPOS+2)(3 downto 0)) & IQUEUE.QUEUE(IQUEUE.RDPOS+3));
-										TEMP_DATA := IQUEUE.QUEUE(IQUEUE.RDPOS+1);
-										TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
-										NUM_BYTES := 4;
-										CPU_STATE := CPU_OMA;																		
-								end case;						
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"8") then	-------------------------------------------- column 8 instructions
-								case IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4) is
-									when x"8" =>	------------------------------------------------------------------------- LDX r1,rr2,X instruction
-									when x"9" =>	-------------------------------------------------------------------------- LEA r1,r2,X instruction
-									when x"C" =>	-------------------------------------------------------------------------------- PUSHX instruction
-									when x"D" =>	--------------------------------------------------------------------------------- POPX instruction
-									when x"F" =>
-										CPU_STATE := CPU_ILLEGAL;
-									when others =>	------------------------------------------------------------- ER2,ER1 addressing mode instructions
-										MAB <= ADDRESSER12((IQUEUE.QUEUE(IQUEUE.RDPOS+1)) & IQUEUE.QUEUE(IQUEUE.RDPOS+2)(7 downto 4));
-										DEST_ADDR := ADDRESSER12((IQUEUE.QUEUE(IQUEUE.RDPOS+2)(3 downto 0)) & IQUEUE.QUEUE(IQUEUE.RDPOS+3));
-										TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
-										NUM_BYTES := 4;
-										CPU_STATE := CPU_TMA;																			
-								end case;
-							---------------------------------------------------------------------------------------------------- 2nd page instructions
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"1F") then
-								------------------------------------------------------------------------------------------------ CPC R2,R1 instruction
-								TEMP_OP := ALU_CPC;
-								if (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"A4") then
-									MAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+3));
-									DEST_ADDR := ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+2));
-									NUM_BYTES := 4;
-									CPU_STATE := CPU_TMA;
-								----------------------------------------------------------------------------------------------- CPC IR2,R1 instruction
-								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"A5") then
-									DEST_ADDR := ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+3));
-									MAB <= RP(3 downto 0) & IQUEUE.QUEUE(IQUEUE.RDPOS+2);
-									NUM_BYTES := 4;
-									CPU_STATE := CPU_ISMD1;
-								----------------------------------------------------------------------------------------------- CPC R1,IMM instruction
-								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"A6") then
-									MAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+2));
-									TEMP_DATA := IQUEUE.QUEUE(IQUEUE.RDPOS+3);
-									NUM_BYTES := 4;
-									CPU_STATE := CPU_OMA;
-								---------------------------------------------------------------------------------------------- CPC IR1,IMM instruction
-								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"A7") then
-									MAB <= RP(3 downto 0) & IQUEUE.QUEUE(IQUEUE.RDPOS+2);
-									TEMP_DATA := IQUEUE.QUEUE(IQUEUE.RDPOS+3);
-									NUM_BYTES := 4;
-									CPU_STATE := CPU_IND1;						
-								end if;
-							end if;
-						end if;
-						
-						------------------------------------------------------------------------------------------------------------------------------
-						--**************************************************************************************************************************--
-						--                                                     3-byte instructions                                                  --
-						--**************************************************************************************************************************--
-						------------------------------------------------------------------------------------------------------------------------------
-						if (IQUEUE.CNT>=3) then			
-							if (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"D") then	-------------------------------------------------- JP cc,DirectAddress
-								if (CONDITIONCODE(IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4))='1') then 
-									PC := IQUEUE.QUEUE(IQUEUE.RDPOS+1) & IQUEUE.QUEUE(IQUEUE.RDPOS+2);
-									IQUEUE.FETCH_STATE := F_ADDR;
-								else
-									NUM_BYTES := 3;
-								end if;
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"9") then	-------------------------------------------- column 9 instructions
-								if (IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4)=x"8") then	----------------------------------------- LDX rr1,r2,X instruction
-									MAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));							-- source address				
-									DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));						-- dest address
-									RESULT := IQUEUE.QUEUE(IQUEUE.RDPOS+2);													-- RESULT = offset (X)
-									NUM_BYTES := 3;
-									CPU_STATE := CPU_XRRD;
-								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4)=x"9") then	------------------------------------ LEA rr1,rr2,X instruction
-									MAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));							-- source address				
-									DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));						-- dest address
-									RESULT := IQUEUE.QUEUE(IQUEUE.RDPOS+2);
-									NUM_BYTES := 3;
-									CPU_STATE := CPU_XRRTORR;
-								end if;
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"8") then	-------------------------------------------- column 8 instructions
-								if (IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4)=x"8") then	----------------------------------------- LDX r1,rr2,X instruction
-									MAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));							-- source address				
-									DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));						-- dest address
-									RESULT := IQUEUE.QUEUE(IQUEUE.RDPOS+2);													-- RESULT = offset (X)
-									NUM_BYTES := 3;
-									CPU_STATE := CPU_XRRS;
-								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4)=x"9") then	-------------------------------------- LEA r1,r2,X instruction
-									MAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));							-- source address				
-									DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));						-- dest address
-									RESULT := IQUEUE.QUEUE(IQUEUE.RDPOS+2);
-									NUM_BYTES := 3;
-									CPU_STATE := CPU_XRTOM;						
-								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4)=x"C") then	---------------------------------------- PUSHX ER2 instruction
-									SP := SP - 1;
-									MAB <= ADDRESSER12(IQUEUE.QUEUE(IQUEUE.RDPOS+1)&IQUEUE.QUEUE(IQUEUE.RDPOS+2)(7 downto 4));
-									DEST_ADDR := SP;
-									NUM_BYTES := 3;
-									CPU_STATE := CPU_TMA;
-								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4)=x"D") then	----------------------------------------- POPX ER2 instruction
-									MAB <= SP;
-									DEST_ADDR := ADDRESSER12(IQUEUE.QUEUE(IQUEUE.RDPOS+1)&IQUEUE.QUEUE(IQUEUE.RDPOS+2)(7 downto 4));
-									SP := SP + 1;
-									NUM_BYTES := 3;
-									CPU_STATE := CPU_TMA;
-								end if;
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"7") then	-------------------------------------------- column 7 instructions
-								case IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4) is
-									when x"8" =>	------------------------------------------------------------------------- LDX IRR2,IR1 instruction
-										MAB <= RP(3 downto 0) & IQUEUE.QUEUE(IQUEUE.RDPOS+1);
-										DEST_ADDR := RP(3 downto 0) & IQUEUE.QUEUE(IQUEUE.RDPOS+2);
+							
+							------------------------------------------------------------------------------------------------------------------------------
+							--**************************************************************************************************************************--
+							--                                                     3-byte instructions                                                  --
+							--**************************************************************************************************************************--
+							------------------------------------------------------------------------------------------------------------------------------
+							if (IQUEUE.CNT>=3) then	-- 3-byte instructions
+								if (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"D") then	-------------------------------------------------- JP cc,DirectAddress
+									if (CONDITIONCODE(IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4))='1') then 
+										PC := IQUEUE.QUEUE(IQUEUE.RDPOS+1) & IQUEUE.QUEUE(IQUEUE.RDPOS+2);
+										IQUEUE.FETCH_STATE := F_ADDR;
+									else
 										NUM_BYTES := 3;
-										CPU_STATE := CPU_IRRS;
-									when x"9" =>	------------------------------------------------------------------------- LDX IR2,IRR1 instruction
-										MAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
-										DEST_ADDR := RP(3 downto 0) & IQUEUE.QUEUE(IQUEUE.RDPOS+2);
-										NUM_BYTES := 3;
-										CPU_STATE := CPU_IMTOIRR;
-									when x"C" =>	--------------------------------------------------------------------------- LD r1,r2,X instruction
-										MAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));							-- source address				
+									end if;
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"9") then	-------------------------------------------- column 9 instructions
+									if (IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4)=x"8") then	----------------------------------------- LDX rr1,r2,X instruction
+										FRAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));							-- source address				
 										DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));						-- dest address
 										RESULT := IQUEUE.QUEUE(IQUEUE.RDPOS+2);													-- RESULT = offset (X)
 										NUM_BYTES := 3;
-										CPU_STATE := CPU_XADTOM;
-									when x"D" =>	--------------------------------------------------------------------------- LD r2,r1,X instruction
-										MAB <= RP(3 downto 0) & RP(7 downto 4) & IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4);
-										DEST_ADDR := RP(3 downto 0) & RP(7 downto 4) & IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0);
+										CPU_STATE := CPU_XRRD;
+									elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4)=x"9") then	------------------------------------ LEA rr1,rr2,X instruction
+										FRAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));							-- source address				
+										DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));						-- dest address
 										RESULT := IQUEUE.QUEUE(IQUEUE.RDPOS+2);
 										NUM_BYTES := 3;
-										CPU_STATE := CPU_MTOXAD;
-									when x"F" =>	------------------------------------------------------------------------ BTJ p,b,Ir1,X instruction
-									when others =>	----------------------------------------------------------------------------- IR1,imm instructions
-										MAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
-										TEMP_DATA := IQUEUE.QUEUE(IQUEUE.RDPOS+2);
-										TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
-										NUM_BYTES := 3;
-										CPU_STATE := CPU_IND1;																				
-								end case;						
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"6") then	-------------------------------------------- column 6 instructions
-								case IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4) is
-									when x"8" =>	-------------------------------------------------------------------------- LDX IRR2,R1 instruction
-										MAB <= RP(3 downto 0) & IQUEUE.QUEUE(IQUEUE.RDPOS+1);
-										DEST_ADDR := ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+2));
-										NUM_BYTES := 3;
-										LU_INSTRUCTION := '1';	-- in this mode this flag is used to signal the direct register addressing mode
-										CPU_STATE := CPU_IRRS;								
-									when x"9" =>	-------------------------------------------------------------------------- LDX R2,IRR1 instruction
-										MAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
-										DEST_ADDR := RP(3 downto 0) & IQUEUE.QUEUE(IQUEUE.RDPOS+2);
-										NUM_BYTES := 3;
-										CPU_STATE := CPU_MTOIRR;
-									when x"C" =>	-- illegal, decoded at 1-byte decoder
-										--CPU_STATE := CPU_ILLEGAL;	-- uncommenting this adds +400 LEs to the design!!!
-									when x"D" =>	------------------------------------------------------------------------------ CALL DA instruction
-									when x"F" =>	------------------------------------------------------------------------- BTJ p,b,r1,X instruction
-									when others =>	------------------------------------------------------------------------------ R1,imm instructions
-										MAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
-										TEMP_DATA := IQUEUE.QUEUE(IQUEUE.RDPOS+2);
-										TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
-										NUM_BYTES := 3;
-										CPU_STATE := CPU_OMA;																				
-								end case;						
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"5") then	-------------------------------------------- column 5 instructions
-								case IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4) is
-									when x"8" =>	-------------------------------------------------------------------------- LDX Ir1,ER2 instruction
-										MAB <= IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0) & IQUEUE.QUEUE(IQUEUE.RDPOS+2);				
-										DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));					-- dest address
-										NUM_BYTES := 3;
-										CPU_STATE := CPU_IND2;
-									when x"9" =>	-------------------------------------------------------------------------- LDX Ir2,ER1 instruction
-										MAB <= RP(3 downto 0) & RP(7 downto 4) & IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4);
-										DEST_ADDR := IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0) & IQUEUE.QUEUE(IQUEUE.RDPOS+2);
-										NUM_BYTES := 3;
-										CPU_STATE := CPU_ISMD1;								
-									when x"C" =>	------------------------------------------------------------------------- LDC Ir1,Irr2 instruction
-									when x"D" =>	----------------------------------------------------------------------------- BSWAP R1 instruction
-									when x"F" =>	---------------------------------------------------------------------------- LD R2,IR1 instruction
-									when others =>	------------------------------------------------------------------------------ IR2,R1 instructions
-										DEST_ADDR := ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+2));
-										MAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
-										TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
-										NUM_BYTES := 3;
-										CPU_STATE := CPU_ISMD1;																				
-								end case;						
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"4") then	-------------------------------------------- column 4 instructions
-								case IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4) is
-									when x"8" =>	--------------------------------------------------------------------------- LDX r1,ER2 instruction
-										MAB <= IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0) & IQUEUE.QUEUE(IQUEUE.RDPOS+2);			
-										DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));					-- dest address
-										NUM_BYTES := 3;
-										CPU_STATE := CPU_TMA;							
-									when x"9" =>	--------------------------------------------------------------------------- LDX r2,ER1 instruction
-										MAB <= RP(3 downto 0) & RP(7 downto 4) & IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4);
-										DEST_ADDR := IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0) & IQUEUE.QUEUE(IQUEUE.RDPOS+2);
-										NUM_BYTES := 3;
-										CPU_STATE := CPU_TMA;							
-									when x"C" =>	------------------------------------------------------------------------------ JP Irr1 instruction
-									when x"D" =>	---------------------------------------------------------------------------- CALL Irr1 instruction
-									when x"F" =>	----------------------------------------------------------------------------- MULT RR1 instruction
-									when others =>	------------------------------------------------------------------------------- R2,R1 instructions
-										MAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
-										DEST_ADDR := ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+2));
-										TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
-										NUM_BYTES := 3;
-										CPU_STATE := CPU_TMA;																				
-								end case;					
-							end if;
-							------------------------------------------------------------------------------------------------- BTJ p,b,r1,X instruction
-							------------------------------------------------------------------------------------------------ BTJ p,b,Ir1,X instruction
-							if (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"F6" or IQUEUE.QUEUE(IQUEUE.RDPOS)=x"F7") then
-								MAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));							-- source address				
-								TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4);	-- TEMP_OP has the polarity (bit 3) and bit number (bits 2:0)
-								RESULT := IQUEUE.QUEUE(IQUEUE.RDPOS+2);					-- RESULT has the offset X
-								NUM_BYTES := 3;
-								if (IQUEUE.QUEUE(IQUEUE.RDPOS)(0)='0') then CPU_STATE := CPU_BTJ;	else CPU_STATE := CPU_IBTJ;
-								end if;
-							---------------------------------------------------------------------------------------------------- LD R2,IR1 instruction
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"F5") then
-								MAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
-								DEST_ADDR := RP(3 downto 0) & IQUEUE.QUEUE(IQUEUE.RDPOS+2);
-								NUM_BYTES := 3;
-								CPU_STATE := CPU_IND2;						
-							------------------------------------------------------------------------------------------------------ CALL DA instruction
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"D6") then
-								DEST_ADDR16 := PC + 3;
-								PC := IQUEUE.QUEUE(IQUEUE.RDPOS+1) & IQUEUE.QUEUE(IQUEUE.RDPOS+2);
-								SP := SP - 1;
-								MAB <= SP;				
-								LU_INSTRUCTION := '0';	-- this is used to indicate wether the stacking is due to a CALL or INT, 0 for a CALL
-								IQUEUE.FETCH_STATE := F_ADDR;
-								CPU_STATE := CPU_STACK;
-							---------------------------------------------------------------------------------------------------- 2nd page instructions
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"1F") then
-								-------------------------------------------------------------------------------------------------- PUSH IM instruction
-								if (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"70") then
-									SP := SP - 1;
-									MAB <= SP;
-									TEMP_DATA := IQUEUE.QUEUE(IQUEUE.RDPOS+2);
-									NUM_BYTES := 3;
-									CPU_STATE := CPU_OMA;
-								------------------------------------------------------------------------------------------------ CPC r1,r2 instruction
-								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"A2") then
-									MAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+2)(3 downto 0));							-- source address				
-									DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+2)(7 downto 4));						-- dest address
-									TEMP_OP := ALU_CPC;
-									NUM_BYTES := 3;
-									CPU_STATE := CPU_TMA;
-								----------------------------------------------------------------------------------------------- CPC r1,Ir2 instruction
-								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"A3") then
-									MAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+2)(3 downto 0));							-- source address				
-									DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+2)(7 downto 4));						-- dest address
-									TEMP_OP := ALU_CPC;
-									NUM_BYTES := 3;
-									CPU_STATE := CPU_ISMD1;
-								--------------------------------------------------------------------------------------------------- SRL R1 instruction
-								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"C0") then
-									MAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+2));
-									TEMP_OP := LU2_SRL;
-									NUM_BYTES := 3;
-									CPU_STATE := CPU_OMA2;
-								-------------------------------------------------------------------------------------------------- SRL IR1 instruction
-								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"C1") then
-									MAB <= RP(3 downto 0) & IQUEUE.QUEUE(IQUEUE.RDPOS+2);
-									TEMP_OP := LU2_SRL;
-									NUM_BYTES := 3;
-									CPU_STATE := CPU_IND1;
-									LU_INSTRUCTION := '1';						
-								end if;
-							end if;
-						end if;
-						
-						------------------------------------------------------------------------------------------------------------------------------
-						--**************************************************************************************************************************--
-						--                                                     2-byte instructions                                                  --
-						--**************************************************************************************************************************--
-						------------------------------------------------------------------------------------------------------------------------------
-						if (IQUEUE.CNT>=2) then
-							if (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"C") then	------------------------------------------------- LD r,IMM instruction
-								MAB <= RP(3 downto 0) & RP(7 downto 4) & IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
-								DATAWRITE(RP(3 downto 0) & RP(7 downto 4) & IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4),IQUEUE.QUEUE(IQUEUE.RDPOS+1));
-								NUM_BYTES := 2;
-								CPU_STATE := CPU_STORE;
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"B") then	-------------------------------------------- JR cc,RelativeAddress
-								PC := PC + 2;
-								if (CONDITIONCODE(IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4))='1') then
-									PC := ADDER16(PC,IQUEUE.QUEUE(IQUEUE.RDPOS+1));
-									IQUEUE.FETCH_STATE := F_ADDR;
-								else
-									IQUEUE.RDPOS := IQUEUE.RDPOS + 2;
-									IQUEUE.CNT := IQUEUE.CNT - 2;							
-								end if;
-								CPU_STATE := CPU_DECOD;
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"A") then	------------------------------------------- DJNZ r,RelativeAddress
-								MAB <= RP(3 downto 0) & RP(7 downto 4) & IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
-								PC := PC + 2;
-								DEST_ADDR16 := ADDER16(PC,IQUEUE.QUEUE(IQUEUE.RDPOS+1)); 					
-								IQUEUE.RDPOS := IQUEUE.RDPOS + 2;
-								IQUEUE.CNT := IQUEUE.CNT - 2;
-								IQUEUE.FETCH_STATE := F_ADDR;
-								CPU_STATE := CPU_DJNZ;
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"3") then	-------------------------------------------- column 3 instructions
-								case IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4) is
-									when x"8" =>	------------------------------------------------------------------------ LDEI Ir1,Irr2 instruction
-									when x"9" =>	------------------------------------------------------------------------ LDEI Ir2,Irr1 instruction
-									when x"C" =>	------------------------------------------------------------------------ LDCI Ir1,Irr2 instruction
-										RESULT(3 downto 0) := IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0);
-										MAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));
-										NUM_BYTES := 2;
-										CAN_FETCH := '0';
-										LU_INSTRUCTION := '0';	-- indicates it is a read from program memory
-										WORD_DATA := '1';		-- indicates it is a LDCI instruction
-										CPU_STATE := CPU_LDPTOIM;
-									when x"D" =>	------------------------------------------------------------------------ LDCI Ir2,Irr1 instruction
-										RESULT(3 downto 0) := IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0);
-										MAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));
-										NUM_BYTES := 2;
-										CAN_FETCH := '0';
-										LU_INSTRUCTION := '1';	-- indicates it is a write onto program memory
-										WORD_DATA := '1';		-- indicates it is a LDCI instruction
-										CPU_STATE := CPU_LDPTOIM;
-									when x"F" =>	---------------------------------------------------------------------------- LD Ir1,r2 instruction
-										MAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));
-										DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));
-										NUM_BYTES := 2;
-										CPU_STATE := CPU_IND2;
-									when others =>	--------------------------------------------------------------------------- Ir2 to r1 instructions
-										MAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));							-- source address				
+										CPU_STATE := CPU_XRRTORR;
+									end if;
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"8") then	-------------------------------------------- column 8 instructions
+									if (IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4)=x"8") then	----------------------------------------- LDX r1,rr2,X instruction
+										FRAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));							-- source address				
 										DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));						-- dest address
-										TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
-										NUM_BYTES := 2;
-										CPU_STATE := CPU_ISMD1;						
-								end case;						
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"2") then	-------------------------------------------- column 2 instructions
-								case IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4) is
-									when x"8" =>	-------------------------------------------------------------------------- LDE r1,Irr2 instruction
-									when x"9" =>	-------------------------------------------------------------------------- LDE r2,Irr1 instruction
-									when x"C" =>	-------------------------------------------------------------------------- LDC r1,Irr2 instruction
-										MAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));
-										DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));
-										NUM_BYTES := 2;
-										CAN_FETCH := '0';
-										LU_INSTRUCTION := '0';
-										CPU_STATE := CPU_LDPTOM;
-									when x"D" =>	-------------------------------------------------------------------------- LDC r2,Irr1 instruction
-										MAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));
-										DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));
-										NUM_BYTES := 2;
-										CAN_FETCH := '0';
-										LU_INSTRUCTION := '1';
-										CPU_STATE := CPU_LDPTOM;
-									when x"E" =>	--------------------------------------------------------------------------- BIT p,b,r1 instruction
-										MAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));
-										TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4);	-- TEMP_OP has the polarity (bit 3) and bit number (bits 2:0)
-										RESULT := IQUEUE.QUEUE(IQUEUE.RDPOS+2);					-- RESULT has the offset X
-										NUM_BYTES := 2;
-										CPU_STATE := CPU_BIT;
-									when x"F" =>	----------------------------------------------------------------------------- TRAP imm instruction
-										MAB <= "000" & IQUEUE.QUEUE(IQUEUE.RDPOS+1) & '0';
-										DEST_ADDR16 := PC + 2;
-										NUM_BYTES := 2;
-										CPU_STATE := CPU_TRAP;
-									when others =>	---------------------------------------------------------------------------- r2 to r1 instructions
-										MAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));							-- source address				
+										RESULT := IQUEUE.QUEUE(IQUEUE.RDPOS+2);													-- RESULT = offset (X)
+										NUM_BYTES := 3;
+										CPU_STATE := CPU_XRRS;
+									elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4)=x"9") then	-------------------------------------- LEA r1,r2,X instruction
+										FRAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));							-- source address				
 										DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));						-- dest address
-										TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
-										NUM_BYTES := 2;
-										CPU_STATE := CPU_TMA;					
-								end case;						
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"1") then	-------------------------------------------- column 1 instructions
-								case IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4) is
-									when x"0" =>	------------------------------------------------------------------------------ SRP IMM instruction	
-										RP := IQUEUE.QUEUE(IQUEUE.RDPOS+1);
-										NUM_BYTES := 2;
-										CPU_STATE := CPU_DECOD;
-									when x"5" =>	------------------------------------------------------------------------------ POP IR1 instruction
-										MAB <= SP;
-										DEST_ADDR := ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
-										SP := SP + 1;
-										NUM_BYTES := 2;
-										CPU_STATE := CPU_IND2;								
-									when x"7" =>	----------------------------------------------------------------------------- PUSH IR1 instruction
+										RESULT := IQUEUE.QUEUE(IQUEUE.RDPOS+2);
+										NUM_BYTES := 3;
+										CPU_STATE := CPU_XRTOM;						
+									elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4)=x"C") then	---------------------------------------- PUSHX ER2 instruction
 										SP := SP - 1;
-										MAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+										FRAB <= ADDRESSER12(IQUEUE.QUEUE(IQUEUE.RDPOS+1)&IQUEUE.QUEUE(IQUEUE.RDPOS+2)(7 downto 4));
 										DEST_ADDR := SP;
-										NUM_BYTES := 2;
-										CPU_STATE := CPU_ISMD1;								
-									when x"8" =>	--------------------------------------------------------------------------------- DECW instruction
-										MAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
-										TEMP_OP := LU2_DEC;
-										WORD_DATA := '1';
-										NUM_BYTES := 2;
-										CPU_STATE := CPU_INDRR;							
-									when x"A" =>	--------------------------------------------------------------------------------- INCW instruction
-										MAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
-										TEMP_OP := LU2_INC;
-										WORD_DATA := '1';
-										NUM_BYTES := 2;
-										CPU_STATE := CPU_INDRR;
-									when others =>	--------------------------------------------------------------------------------- IR1 instructions
-										MAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
-										TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
-										NUM_BYTES := 2;
-										CPU_STATE := CPU_IND1;
-										LU_INSTRUCTION := '1';
-								end case;
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"0") then	-------------------------------------------- column 0 instructions
-								case IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4) is
-									when x"0" =>	---------------------------------------------------------------------------------- BRK instruction	
-										-- do nothing, BRK decoding is done in 1-byte instruction section
-									when x"5" =>	---------------------------------------------------------------------------------- POP instruction
-										MAB <= SP;
-										DEST_ADDR := ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
-										SP := SP + 1;
-										NUM_BYTES := 2;
+										NUM_BYTES := 3;
 										CPU_STATE := CPU_TMA;
-									when x"7" =>	--------------------------------------------------------------------------------- PUSH instruction
-										SP := SP - 1;
-										MAB <= RP(3 downto 0) & IQUEUE.QUEUE(IQUEUE.RDPOS+1);
-										DEST_ADDR := SP;
-										NUM_BYTES := 2;
-										CPU_STATE := CPU_TMA;							
-									when x"8" =>	--------------------------------------------------------------------------------- DECW instruction
-										DEST_ADDR := ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
-										MAB <= DEST_ADDR+1;
-										TEMP_OP := LU2_DEC;
-										WORD_DATA := '1';
-										NUM_BYTES := 2;
-										CPU_STATE := CPU_OMA2;							
-									when x"A" =>	--------------------------------------------------------------------------------- INCW instruction
-										DEST_ADDR := ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
-										MAB <= DEST_ADDR+1;
-										TEMP_OP := LU2_INC;
-										WORD_DATA := '1';
-										NUM_BYTES := 2;
-										CPU_STATE := CPU_OMA2;
-									when others =>	---------------------------------------------------------------------------------- R1 instructions
-										MAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
-										TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
-										NUM_BYTES := 2;
-										CPU_STATE := CPU_OMA2;
-								end case;
-							end if;	
-							---------------------------------------------------------------------------------------------------------- MUL instruction 
-							if (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"F4") then
-								MAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
-								NUM_BYTES := 2;
-								CPU_STATE := CPU_MUL;
-							---------------------------------------------------------------------------------------------------- CALL IRR1 instruction
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"D4") then
-								DEST_ADDR16 := PC + 2;
-								MAB <= RP(3 downto 0) & IQUEUE.QUEUE(IQUEUE.RDPOS+1);
-								IQUEUE.FETCH_STATE := F_ADDR;
-								CPU_STATE := CPU_INDSTACK;
-							------------------------------------------------------------------------------------------------------ JP IRR1 instruction
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"C4") then
-								MAB <= RP(3 downto 0) & IQUEUE.QUEUE(IQUEUE.RDPOS+1);
-								IQUEUE.FETCH_STATE := F_ADDR;
-								CPU_STATE := CPU_INDJUMP;
-							----------------------------------------------------------------------------------------------------- BSWAP R1 instruction
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"D5") then
-								MAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
-								TEMP_OP := ALU_BSWAP;
-								NUM_BYTES := 2;
-								CPU_STATE := CPU_OMA;
-							------------------------------------------------------------------------------------------------- LDC Ir1,Irr2 instruction
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"C5") then
-								RESULT(3 downto 0) := IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0);
-								MAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));
-								NUM_BYTES := 2;
-								CAN_FETCH := '0';
-								LU_INSTRUCTION := '0';
-								CPU_STATE := CPU_LDPTOIM;						
-							end if;
-						end if;
-						
-						------------------------------------------------------------------------------------------------------------------------------
-						--**************************************************************************************************************************--
-						--                                                     1-byte instructions                                                  --
-						--**************************************************************************************************************************--
-						------------------------------------------------------------------------------------------------------------------------------
-						if (IQUEUE.CNT>=1) then
-							if (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"F") then	------------------------------------------------ column F instructions
-								case IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4) is
-									when x"0" =>	---------------------------------------------------------------------------------- NOP instruction	
-										NUM_BYTES := 1;
-									when x"1" =>	------------------------------------------------------------------------------ page 2 instructions
-									when x"2" =>
-										ATM_COUNTER := 0;
-										NUM_BYTES := 1;
-									when x"3" =>
-										CPU_STATE := CPU_ILLEGAL;
-									when x"4" =>
-										CPU_STATE := CPU_ILLEGAL;
-									when x"5" =>	---------------------------------------------------------------------------------- WDT instruction
-										NUM_BYTES := 1;
-									when x"6" =>	--------------------------------------------------------------------------------- STOP instruction
-										NUM_BYTES := 1;
-										CPU_STATE := CPU_HALTED;
-										STOP <= '1';
-									when x"7" =>	--------------------------------------------------------------------------------- HALT instruction
-										NUM_BYTES := 1;
-										CPU_STATE := CPU_HALTED;
-									when x"8" =>	----------------------------------------------------------------------------------- DI instruction
-										IRQE := '0';
-										NUM_BYTES := 1;
-									when x"9" =>	----------------------------------------------------------------------------------- EI instruction
-										IRQE := '1';
-										NUM_BYTES := 1;							
-									when x"A" =>	---------------------------------------------------------------------------------- RET instruction
-										NUM_BYTES := 1;
-										MAB <= SP;
-										CPU_STATE := CPU_UNSTACK;	
-									when x"B" =>	--------------------------------------------------------------------------------- IRET instruction
-										NUM_BYTES := 1;
-										IRQE := '1';
-										MAB <= SP;
-										CPU_STATE := CPU_UNSTACK3;
-									when x"C" =>	---------------------------------------------------------------------------------- RCF instruction
-										CPU_FLAGS.C := '0';
-										NUM_BYTES := 1;
-									when x"D" =>	---------------------------------------------------------------------------------- SCF instruction
-										CPU_FLAGS.C := '1';
-										NUM_BYTES := 1;
-									when x"E" =>	---------------------------------------------------------------------------------- CCF instruction
-										CPU_FLAGS.C := not CPU_FLAGS.C;
-										NUM_BYTES := 1;	
-									when others =>	---------------------------------------------------------------------------------- R1 instructions
-										CPU_STATE := CPU_ILLEGAL;
-								end case;
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"E") then	------------------------------------------------ INC r instruction
-								MAB <= RP(3 downto 0) & RP(7 downto 4) & IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
-								TEMP_OP := LU2_INC;
-								NUM_BYTES := 1;
-								CPU_STATE := CPU_OMA2;
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"00") then	-------------------------------------------------------------- BRK instruction
-								if (OCDCR.BRKEN='1') then		-- the BRK instruction is enabled
-									if (OCDCR.DBGACK='1') then
-										if (DBG_UART.TX_EMPTY='1') then
-											DBG_UART.TX_DATA:=x"FF";
-											DBG_UART.TX_EMPTY:='0';
-										end if;
+									elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4)=x"D") then	----------------------------------------- POPX ER2 instruction
+										FRAB <= SP;
+										DEST_ADDR := ADDRESSER12(IQUEUE.QUEUE(IQUEUE.RDPOS+1)&IQUEUE.QUEUE(IQUEUE.RDPOS+2)(7 downto 4));
+										SP := SP + 1;
+										NUM_BYTES := 3;
+										CPU_STATE := CPU_TMA;
 									end if;
-									if (OCDCR.BRKLOOP='0') then	-- if loop on BRK is disabled
-										OCDCR.DBGMODE := '1';	-- set DBGMODE halting CPU
-									end if;
-								else
-									NUM_BYTES := 1;			-- remove the instruction from queue (execute as a NOP)
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"7") then	-------------------------------------------- column 7 instructions
+									case IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4) is
+										when x"8" =>	------------------------------------------------------------------------- LDX IRR2,IR1 instruction
+											FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+											DEST_ADDR := ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+2));
+											NUM_BYTES := 3;
+											CPU_STATE := CPU_IRRS;
+										when x"9" =>	------------------------------------------------------------------------- LDX IR2,IRR1 instruction
+											FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+											DEST_ADDR := ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+2));
+											NUM_BYTES := 3;
+											CPU_STATE := CPU_IMTOIRR;
+										when x"C" =>	--------------------------------------------------------------------------- LD r1,r2,X instruction
+											FRAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));							-- source address				
+											DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));						-- dest address
+											RESULT := IQUEUE.QUEUE(IQUEUE.RDPOS+2);													-- RESULT = offset (X)
+											NUM_BYTES := 3;
+											CPU_STATE := CPU_XADTOM;
+										when x"D" =>	--------------------------------------------------------------------------- LD r2,r1,X instruction
+											FRAB <= RP(3 downto 0) & RP(7 downto 4) & IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4);
+											DEST_ADDR := RP(3 downto 0) & RP(7 downto 4) & IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0);
+											RESULT := IQUEUE.QUEUE(IQUEUE.RDPOS+2);
+											NUM_BYTES := 3;
+											CPU_STATE := CPU_MTOXAD;
+										when x"F" =>	------------------------------------------------------------------------ BTJ p,b,Ir1,X instruction
+										when others =>	----------------------------------------------------------------------------- IR1,imm instructions
+											FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+											TEMP_DATA := IQUEUE.QUEUE(IQUEUE.RDPOS+2);
+											TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
+											NUM_BYTES := 3;
+											CPU_STATE := CPU_IND1;																				
+									end case;						
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"6") then	-------------------------------------------- column 6 instructions
+									case IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4) is
+										when x"8" =>	-------------------------------------------------------------------------- LDX IRR2,R1 instruction
+											FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+											DEST_ADDR := ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+2));
+											NUM_BYTES := 3;
+											LU_INSTRUCTION := '1';	-- in this mode this flag is used to signal the direct register addressing mode
+											CPU_STATE := CPU_IRRS;								
+										when x"9" =>	-------------------------------------------------------------------------- LDX R2,IRR1 instruction
+											FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+											DEST_ADDR := ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+2));
+											NUM_BYTES := 3;
+											CPU_STATE := CPU_MTOIRR;
+										when x"C" =>	-- illegal, decoded at 1-byte decoder
+											--CPU_STATE := CPU_ILLEGAL;	-- uncommenting this adds +400 LEs to the design!!!
+										when x"D" =>	------------------------------------------------------------------------------ CALL DA instruction
+										when x"F" =>	------------------------------------------------------------------------- BTJ p,b,r1,X instruction
+										when others =>	------------------------------------------------------------------------------ R1,imm instructions
+											FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+											TEMP_DATA := IQUEUE.QUEUE(IQUEUE.RDPOS+2);
+											TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
+											NUM_BYTES := 3;
+											CPU_STATE := CPU_OMA;																				
+									end case;						
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"5") then	-------------------------------------------- column 5 instructions
+									case IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4) is
+										when x"8" =>	-------------------------------------------------------------------------- LDX Ir1,ER2 instruction
+											FRAB <= IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0) & IQUEUE.QUEUE(IQUEUE.RDPOS+2);				
+											DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));					-- dest address
+											NUM_BYTES := 3;
+											CPU_STATE := CPU_IND2;
+										when x"9" =>	-------------------------------------------------------------------------- LDX Ir2,ER1 instruction
+											FRAB <= RP(3 downto 0) & RP(7 downto 4) & IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4);
+											DEST_ADDR := IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0) & IQUEUE.QUEUE(IQUEUE.RDPOS+2);
+											NUM_BYTES := 3;
+											CPU_STATE := CPU_ISMD1;								
+										when x"C" =>	------------------------------------------------------------------------- LDC Ir1,Irr2 instruction
+										when x"D" =>	----------------------------------------------------------------------------- BSWAP R1 instruction
+										when x"F" =>	---------------------------------------------------------------------------- LD R2,IR1 instruction
+										when others =>	------------------------------------------------------------------------------ IR2,R1 instructions
+											DEST_ADDR := ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+2));
+											FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+											TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
+											NUM_BYTES := 3;
+											CPU_STATE := CPU_ISMD1;																				
+									end case;						
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"4") then	-------------------------------------------- column 4 instructions
+									case IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4) is
+										when x"8" =>	--------------------------------------------------------------------------- LDX r1,ER2 instruction
+											FRAB <= IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0) & IQUEUE.QUEUE(IQUEUE.RDPOS+2);			
+											DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));					-- dest address
+											NUM_BYTES := 3;
+											CPU_STATE := CPU_TMA;							
+										when x"9" =>	--------------------------------------------------------------------------- LDX r2,ER1 instruction
+											FRAB <= RP(3 downto 0) & RP(7 downto 4) & IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4);
+											DEST_ADDR := IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0) & IQUEUE.QUEUE(IQUEUE.RDPOS+2);
+											NUM_BYTES := 3;
+											CPU_STATE := CPU_TMA;							
+										when x"C" =>	------------------------------------------------------------------------------ JP Irr1 instruction
+										when x"D" =>	---------------------------------------------------------------------------- CALL Irr1 instruction
+										when x"F" =>	----------------------------------------------------------------------------- MULT RR1 instruction
+										when others =>	------------------------------------------------------------------------------- R2,R1 instructions
+											FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+											DEST_ADDR := ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+2));
+											TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
+											NUM_BYTES := 3;
+											CPU_STATE := CPU_TMA;																				
+									end case;					
 								end if;
-							elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"C9" or IQUEUE.QUEUE(IQUEUE.RDPOS)=x"D9" or IQUEUE.QUEUE(IQUEUE.RDPOS)=x"F9" or 
-									IQUEUE.QUEUE(IQUEUE.RDPOS)=x"F8" or IQUEUE.QUEUE(IQUEUE.RDPOS)=x"C6") then	--------------------------- illegal opcode
-								CPU_STATE:= CPU_ILLEGAL;
-								NUM_BYTES := 1;
+								------------------------------------------------------------------------------------------------- BTJ p,b,r1,X instruction
+								------------------------------------------------------------------------------------------------ BTJ p,b,Ir1,X instruction
+								if (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"F6" or IQUEUE.QUEUE(IQUEUE.RDPOS)=x"F7") then
+									FRAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));							-- source address				
+									TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4);	-- TEMP_OP has the polarity (bit 3) and bit number (bits 2:0)
+									RESULT := IQUEUE.QUEUE(IQUEUE.RDPOS+2);					-- RESULT has the offset X
+									NUM_BYTES := 3;
+									if (IQUEUE.QUEUE(IQUEUE.RDPOS)(0)='0') then CPU_STATE := CPU_BTJ;	else CPU_STATE := CPU_IBTJ;
+									end if;
+								---------------------------------------------------------------------------------------------------- LD R2,IR1 instruction
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"F5") then
+									FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+									DEST_ADDR := ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+2));
+									NUM_BYTES := 3;
+									CPU_STATE := CPU_IND2;						
+								------------------------------------------------------------------------------------------------------ CALL DA instruction
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"D6") then
+									DEST_ADDR16 := PC + 3;
+									PC := IQUEUE.QUEUE(IQUEUE.RDPOS+1) & IQUEUE.QUEUE(IQUEUE.RDPOS+2);
+									SP := SP - 1;
+									FRAB <= SP;				
+									LU_INSTRUCTION := '0';	-- this is used to indicate wether the stacking is due to a CALL or INT, 0 for a CALL
+									IQUEUE.FETCH_STATE := F_ADDR;
+									CPU_STATE := CPU_STACK;
+								---------------------------------------------------------------------------------------------------- 2nd page instructions
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"1F") then
+									-------------------------------------------------------------------------------------------------- PUSH IM instruction
+									if (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"70") then
+										SP := SP - 1;
+										FRAB <= SP;
+										TEMP_DATA := IQUEUE.QUEUE(IQUEUE.RDPOS+2);
+										NUM_BYTES := 3;
+										CPU_STATE := CPU_OMA;
+									------------------------------------------------------------------------------------------------ CPC r1,r2 instruction
+									elsif (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"A2") then
+										FRAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+2)(3 downto 0));							-- source address				
+										DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+2)(7 downto 4));						-- dest address
+										TEMP_OP := ALU_CPC;
+										NUM_BYTES := 3;
+										CPU_STATE := CPU_TMA;
+									----------------------------------------------------------------------------------------------- CPC r1,Ir2 instruction
+									elsif (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"A3") then
+										FRAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+2)(3 downto 0));							-- source address				
+										DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+2)(7 downto 4));						-- dest address
+										TEMP_OP := ALU_CPC;
+										NUM_BYTES := 3;
+										CPU_STATE := CPU_ISMD1;
+									--------------------------------------------------------------------------------------------------- SRL R1 instruction
+									elsif (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"C0") then
+										FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+2));
+										TEMP_OP := LU2_SRL;
+										NUM_BYTES := 3;
+										CPU_STATE := CPU_OMA2;
+									-------------------------------------------------------------------------------------------------- SRL IR1 instruction
+									elsif (IQUEUE.QUEUE(IQUEUE.RDPOS+1)=x"C1") then
+										FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+2));
+										TEMP_OP := LU2_SRL;
+										NUM_BYTES := 3;
+										CPU_STATE := CPU_IND1;
+										LU_INSTRUCTION := '1';						
+									end if;
+								end if;
 							end if;
-						end if;
-					end if;
-					PC := PC + NUM_BYTES;
-					IQUEUE.RDPOS := IQUEUE.RDPOS + NUM_BYTES;
-					IQUEUE.CNT := IQUEUE.CNT - NUM_BYTES;
-					if (OCD.SINGLESTEP='1') then
-						if (NUM_BYTES/=0 or IQUEUE.FETCH_STATE=F_ADDR) then OCD.SINGLESTEP:='0';
+							
+							------------------------------------------------------------------------------------------------------------------------------
+							--**************************************************************************************************************************--
+							--                                                     2-byte instructions                                                  --
+							--**************************************************************************************************************************--
+							------------------------------------------------------------------------------------------------------------------------------
+							if (IQUEUE.CNT>=2) then	-- 2-byte instructions
+								if (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"C") then	------------------------------------------------- LD r,IMM instruction
+									FRAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4));
+									DATAWRITE(ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4)),IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+									NUM_BYTES := 2;
+									CPU_STATE := CPU_STORE;
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"B") then	-------------------------------------------- JR cc,RelativeAddress
+									PC := PC + 2;
+									if (CONDITIONCODE(IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4))='1') then
+										PC := ADDER16(PC,IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+										IQUEUE.FETCH_STATE := F_ADDR;
+									else
+										IQUEUE.RDPOS := IQUEUE.RDPOS + 2;
+										IQUEUE.CNT := IQUEUE.CNT - 2;							
+									end if;
+									CPU_STATE := CPU_DECOD;
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"A") then	------------------------------------------- DJNZ r,RelativeAddress
+									FRAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4));
+									PC := PC + 2;
+									DEST_ADDR16 := ADDER16(PC,IQUEUE.QUEUE(IQUEUE.RDPOS+1)); 					
+									IQUEUE.RDPOS := IQUEUE.RDPOS + 2;
+									IQUEUE.CNT := IQUEUE.CNT - 2;
+									IQUEUE.FETCH_STATE := F_ADDR;
+									CPU_STATE := CPU_DJNZ;
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"3") then	-------------------------------------------- column 3 instructions
+									case IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4) is
+										when x"8" =>	------------------------------------------------------------------------ LDEI Ir1,Irr2 instruction
+										when x"9" =>	------------------------------------------------------------------------ LDEI Ir2,Irr1 instruction
+										when x"C" =>	------------------------------------------------------------------------ LDCI Ir1,Irr2 instruction
+											RESULT(3 downto 0) := IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0);
+											FRAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));
+											NUM_BYTES := 2;
+											CAN_FETCH := '0';
+											LU_INSTRUCTION := '0';	-- indicates it is a read from program memory
+											WORD_DATA := '1';		-- indicates it is a LDCI instruction
+											CPU_STATE := CPU_LDPTOIM;
+										when x"D" =>	------------------------------------------------------------------------ LDCI Ir2,Irr1 instruction
+											RESULT(3 downto 0) := IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0);
+											FRAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));
+											NUM_BYTES := 2;
+											CAN_FETCH := '0';
+											LU_INSTRUCTION := '1';	-- indicates it is a write onto program memory
+											WORD_DATA := '1';		-- indicates it is a LDCI instruction
+											CPU_STATE := CPU_LDPTOIM;
+										when x"F" =>	---------------------------------------------------------------------------- LD Ir1,r2 instruction
+											FRAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));
+											DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));
+											NUM_BYTES := 2;
+											CPU_STATE := CPU_IND2;
+										when others =>	--------------------------------------------------------------------------- Ir2 to r1 instructions
+											FRAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));							-- source address				
+											DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));						-- dest address
+											TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
+											NUM_BYTES := 2;
+											CPU_STATE := CPU_ISMD1;						
+									end case;						
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"2") then	-------------------------------------------- column 2 instructions
+									case IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4) is
+										when x"8" =>	-------------------------------------------------------------------------- LDE r1,Irr2 instruction
+										when x"9" =>	-------------------------------------------------------------------------- LDE r2,Irr1 instruction
+										when x"C" =>	-------------------------------------------------------------------------- LDC r1,Irr2 instruction
+											FRAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));
+											DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));
+											NUM_BYTES := 2;
+											CAN_FETCH := '0';
+											LU_INSTRUCTION := '0';
+											CPU_STATE := CPU_LDPTOM;
+										when x"D" =>	-------------------------------------------------------------------------- LDC r2,Irr1 instruction
+											FRAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));
+											DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));
+											NUM_BYTES := 2;
+											CAN_FETCH := '0';
+											LU_INSTRUCTION := '1';
+											CPU_STATE := CPU_LDPTOM;
+										when x"E" =>	--------------------------------------------------------------------------- BIT p,b,r1 instruction
+											FRAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));
+											TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4);	-- TEMP_OP has the polarity (bit 3) and bit number (bits 2:0)
+											RESULT := IQUEUE.QUEUE(IQUEUE.RDPOS+2);					-- RESULT has the offset X
+											NUM_BYTES := 2;
+											CPU_STATE := CPU_BIT;
+										when x"F" =>	----------------------------------------------------------------------------- TRAP imm instruction
+											FRAB <= "000" & IQUEUE.QUEUE(IQUEUE.RDPOS+1) & '0';
+											DEST_ADDR16 := PC + 2;
+											NUM_BYTES := 2;
+											CPU_STATE := CPU_TRAP;
+										when others =>	---------------------------------------------------------------------------- r2 to r1 instructions
+											FRAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0));							-- source address				
+											DEST_ADDR := ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));						-- dest address
+											TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
+											NUM_BYTES := 2;
+											CPU_STATE := CPU_TMA;					
+									end case;						
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"1") then	-------------------------------------------- column 1 instructions
+									case IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4) is
+										when x"0" =>	------------------------------------------------------------------------------ SRP IMM instruction	
+											RP := IQUEUE.QUEUE(IQUEUE.RDPOS+1);
+											NUM_BYTES := 2;
+											CPU_STATE := CPU_DECOD;
+										when x"5" =>	------------------------------------------------------------------------------ POP IR1 instruction
+											FRAB <= SP;
+											DEST_ADDR := ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+											SP := SP + 1;
+											NUM_BYTES := 2;
+											CPU_STATE := CPU_IND2;								
+										when x"7" =>	----------------------------------------------------------------------------- PUSH IR1 instruction
+											SP := SP - 1;
+											FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+											DEST_ADDR := SP;
+											NUM_BYTES := 2;
+											CPU_STATE := CPU_ISMD1;								
+										when x"8" =>	--------------------------------------------------------------------------------- DECW instruction
+											FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+											TEMP_OP := LU2_DEC;
+											WORD_DATA := '1';
+											NUM_BYTES := 2;
+											CPU_STATE := CPU_INDRR;							
+										when x"A" =>	--------------------------------------------------------------------------------- INCW instruction
+											FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+											TEMP_OP := LU2_INC;
+											WORD_DATA := '1';
+											NUM_BYTES := 2;
+											CPU_STATE := CPU_INDRR;
+										when others =>	--------------------------------------------------------------------------------- IR1 instructions
+											FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+											TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
+											NUM_BYTES := 2;
+											CPU_STATE := CPU_IND1;
+											LU_INSTRUCTION := '1';
+									end case;
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"0") then	-------------------------------------------- column 0 instructions
+									case IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4) is
+										when x"0" =>	---------------------------------------------------------------------------------- BRK instruction	
+											-- do nothing, BRK decoding is done in 1-byte instruction section
+										when x"5" =>	---------------------------------------------------------------------------------- POP instruction
+											FRAB <= SP;
+											DEST_ADDR := ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+											SP := SP + 1;
+											NUM_BYTES := 2;
+											CPU_STATE := CPU_TMA;
+										when x"7" =>	--------------------------------------------------------------------------------- PUSH instruction
+											SP := SP - 1;
+											FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+											DEST_ADDR := SP;
+											NUM_BYTES := 2;
+											CPU_STATE := CPU_TMA;							
+										when x"8" =>	--------------------------------------------------------------------------------- DECW instruction
+											DEST_ADDR := ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+											FRAB <= DEST_ADDR+1;
+											TEMP_OP := LU2_DEC;
+											WORD_DATA := '1';
+											NUM_BYTES := 2;
+											CPU_STATE := CPU_OMA2;							
+										when x"A" =>	--------------------------------------------------------------------------------- INCW instruction
+											DEST_ADDR := ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+											FRAB <= DEST_ADDR+1;
+											TEMP_OP := LU2_INC;
+											WORD_DATA := '1';
+											NUM_BYTES := 2;
+											CPU_STATE := CPU_OMA2;
+										when others =>	---------------------------------------------------------------------------------- R1 instructions
+											FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+											TEMP_OP := IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
+											NUM_BYTES := 2;
+											CPU_STATE := CPU_OMA2;
+									end case;
+								end if;	
+								---------------------------------------------------------------------------------------------------------- MUL instruction 
+								if (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"F4") then
+									FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+									NUM_BYTES := 2;
+									CPU_STATE := CPU_MUL;
+								---------------------------------------------------------------------------------------------------- CALL IRR1 instruction
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"D4") then
+									DEST_ADDR16 := PC + 2;
+									FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+									IQUEUE.FETCH_STATE := F_ADDR;
+									CPU_STATE := CPU_INDSTACK;
+								------------------------------------------------------------------------------------------------------ JP IRR1 instruction
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"C4") then
+									FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+									IQUEUE.FETCH_STATE := F_ADDR;
+									CPU_STATE := CPU_INDJUMP;
+								----------------------------------------------------------------------------------------------------- BSWAP R1 instruction
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"D5") then
+									FRAB <= ADDRESSER8(IQUEUE.QUEUE(IQUEUE.RDPOS+1));
+									TEMP_OP := ALU_BSWAP;
+									NUM_BYTES := 2;
+									CPU_STATE := CPU_OMA;
+								------------------------------------------------------------------------------------------------- LDC Ir1,Irr2 instruction
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"C5") then
+									RESULT(3 downto 0) := IQUEUE.QUEUE(IQUEUE.RDPOS+1)(3 downto 0);
+									FRAB <= ADDRESSER4(IQUEUE.QUEUE(IQUEUE.RDPOS+1)(7 downto 4));
+									NUM_BYTES := 2;
+									CAN_FETCH := '0';
+									LU_INSTRUCTION := '0';
+									CPU_STATE := CPU_LDPTOIM;						
+								end if;
+							end if;
+							
+							------------------------------------------------------------------------------------------------------------------------------
+							--**************************************************************************************************************************--
+							--                                                     1-byte instructions                                                  --
+							--**************************************************************************************************************************--
+							------------------------------------------------------------------------------------------------------------------------------
+							if (IQUEUE.CNT>=1) then	-- 1-byte instructions
+								if (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"F") then	------------------------------------------------ column F instructions
+									case IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4) is
+										when x"0" =>	---------------------------------------------------------------------------------- NOP instruction	
+											NUM_BYTES := 1;
+										when x"1" =>	------------------------------------------------------------------------------ page 2 instructions
+										when x"2" =>
+											ATM_COUNTER := 0;
+											NUM_BYTES := 1;
+										when x"3" =>
+											CPU_STATE := CPU_ILLEGAL;
+										when x"4" =>
+											CPU_STATE := CPU_ILLEGAL;
+										when x"5" =>	---------------------------------------------------------------------------------- WDT instruction
+											NUM_BYTES := 1;
+										when x"6" =>	--------------------------------------------------------------------------------- STOP instruction
+											NUM_BYTES := 1;
+											STOP <= '1';
+										when x"7" =>	--------------------------------------------------------------------------------- HALT instruction
+											NUM_BYTES := 1;
+											HALT := '1';
+										when x"8" =>	----------------------------------------------------------------------------------- DI instruction
+											IRQE := '0';
+											NUM_BYTES := 1;
+										when x"9" =>	----------------------------------------------------------------------------------- EI instruction
+											IRQE := '1';
+											NUM_BYTES := 1;							
+										when x"A" =>	---------------------------------------------------------------------------------- RET instruction
+											NUM_BYTES := 1;
+											FRAB <= SP;
+											CPU_STATE := CPU_UNSTACK2;	
+										when x"B" =>	--------------------------------------------------------------------------------- IRET instruction
+											NUM_BYTES := 1;
+											IRQE := '1';
+											FRAB <= SP;
+											CPU_STATE := CPU_UNSTACK3;
+										when x"C" =>	---------------------------------------------------------------------------------- RCF instruction
+											CPU_FLAGS.C := '0';
+											NUM_BYTES := 1;
+										when x"D" =>	---------------------------------------------------------------------------------- SCF instruction
+											CPU_FLAGS.C := '1';
+											NUM_BYTES := 1;
+										when x"E" =>	---------------------------------------------------------------------------------- CCF instruction
+											CPU_FLAGS.C := not CPU_FLAGS.C;
+											NUM_BYTES := 1;	
+										when others =>	---------------------------------------------------------------------------------- R1 instructions
+											CPU_STATE := CPU_ILLEGAL;
+									end case;
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)(3 downto 0)=x"E") then	------------------------------------------------ INC r instruction
+									FRAB <= RP(3 downto 0) & RP(7 downto 4) & IQUEUE.QUEUE(IQUEUE.RDPOS)(7 downto 4);
+									TEMP_OP := LU2_INC;
+									NUM_BYTES := 1;
+									CPU_STATE := CPU_OMA2;
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"00") then	-------------------------------------------------------------- BRK instruction
+									if (OCDCR.BRKEN='1') then		-- the BRK instruction is enabled
+										if (OCDCR.DBGACK='1') then
+											if (DBG_UART.TX_EMPTY='1') then
+												DBG_UART.TX_DATA:=x"FF";
+												DBG_UART.TX_EMPTY:='0';
+											end if;
+										end if;
+										if (OCDCR.BRKLOOP='0') then	-- if loop on BRK is disabled
+											OCDCR.DBGMODE := '1';	-- set DBGMODE halting CPU
+										end if;
+									else
+										NUM_BYTES := 1;			-- remove the instruction from queue (execute as a NOP)
+									end if;
+								elsif (IQUEUE.QUEUE(IQUEUE.RDPOS)=x"C9" or IQUEUE.QUEUE(IQUEUE.RDPOS)=x"D9" or IQUEUE.QUEUE(IQUEUE.RDPOS)=x"F9" or 
+										IQUEUE.QUEUE(IQUEUE.RDPOS)=x"F8" or IQUEUE.QUEUE(IQUEUE.RDPOS)=x"C6") then	--------------------------- illegal opcode
+									CPU_STATE:= CPU_ILLEGAL;
+									NUM_BYTES := 1;
+								end if;
+							end if;
+						end if;	-- if DBGMODE=0...
+					end if; -- if not stopped or halted
+					PC := PC + NUM_BYTES;						-- update PC after instruction
+					IQUEUE.RDPOS := IQUEUE.RDPOS + NUM_BYTES;	-- update QUEUE read pointer
+					IQUEUE.CNT := IQUEUE.CNT - NUM_BYTES;		-- update QUEUE available bytes
+					if (OCD.SINGLESTEP='1') then													-- if we are stepping instructions
+						if (NUM_BYTES/=0 or IQUEUE.FETCH_STATE=F_ADDR) then OCD.SINGLESTEP:='0';	-- if a instruction was decoded, reset step flag
 						end if;
 					end if;
 				when CPU_MUL =>	-- MUL ***********************************************************************************************************
-					TEMP_DATA := DATAREAD(MAB);		-- read first operand
-					MAB <= MAB + 1;					-- go to the next operand 
+					TEMP_DATA := DATAREAD(FRAB);		-- read first operand
+					FRAB <= FRAB + 1;					-- go to the next operand 
 					CPU_STATE := CPU_MUL1;
 				when CPU_MUL1 =>
-					DEST_ADDR16 := TEMP_DATA * DATAREAD(MAB);	-- multiply previous operand by the second operand and store temporarily
-					DATAWRITE(MAB,DEST_ADDR16(7 downto 0));		-- write the lower byte in current memory address 
+					DEST_ADDR16 := TEMP_DATA * DATAREAD(FRAB);	-- multiply previous operand by the second operand and store temporarily
+					DATAWRITE(FRAB,DEST_ADDR16(7 downto 0));	-- prepare to write the lower byte in current memory address 
 					WR <= '1';
 					CPU_STATE := CPU_MUL2;
 				when CPU_MUL2 =>
-					MAB <= MAB - 1;								-- decrement memory address (point to the first operand)
-					DATAWRITE(MAB,DEST_ADDR16(15 downto 8));	-- write the higher byte
+					FRAB <= FRAB - 1;							-- decrement memory address (point to the first operand)
+					DATAWRITE(FRAB,DEST_ADDR16(15 downto 8));	-- write the higher byte
 					CPU_STATE := CPU_STORE;						-- complete store operation
 				when CPU_XRRTORR =>	-- LEA *******************************************************************************************************
-					TEMP_DATA := DATAREAD(MAB);					-- read the operand and store it
-					MAB <= MAB + 1;								-- go to the next memory address
+					TEMP_DATA := DATAREAD(FRAB);				-- read the operand and store it
+					FRAB <= FRAB + 1;							-- go to the next memory address
 					CPU_STATE := CPU_XRRTORR2;
 				when CPU_XRRTORR2 =>
-					-- read the next operand and perform a 16 bit add with the offset previously in result
-					DEST_ADDR16 := ADDER16(TEMP_DATA & DATAREAD(MAB),RESULT);	
-					MAB <= DEST_ADDR;							-- point to the destination address
-					DATAWRITE(MAB,DEST_ADDR16(15 downto 8));	-- store the higher byte of the 16-bit result
+					-- read next operand and perform a 16 bit add with the offset previously in result
+					DEST_ADDR16 := ADDER16(TEMP_DATA & DATAREAD(FRAB),RESULT);	
+					FRAB <= DEST_ADDR;							-- point to the destination address
+					DATAWRITE(FRAB,DEST_ADDR16(15 downto 8));	-- store the higher byte of the 16-bit result
 					CPU_STATE := CPU_XRRTORR3;
 				when CPU_XRRTORR3 =>
 					WR <= '1';
 					CPU_STATE := CPU_XRRTORR4;
 				when CPU_XRRTORR4 =>
-					MAB <= MAB + 1;								-- go to the next memory address
-					DATAWRITE(MAB,DEST_ADDR16(7 downto 0));		-- store the lower byte of the 16-bit result
+					FRAB <= FRAB + 1;							-- go to the next memory address
+					DATAWRITE(FRAB,DEST_ADDR16(7 downto 0));	-- store the lower byte of the 16-bit result
 					CPU_STATE := CPU_STORE;						-- complete store operation
 				when CPU_MTOXAD =>	-- MEMORY TO INDEXED 8-BIT ADDRESS ***************************************************************************
-					TEMP_DATA := DATAREAD(MAB);		
-					MAB <= DEST_ADDR;
+					TEMP_DATA := DATAREAD(FRAB);				-- read operand from memory
+					FRAB <= DEST_ADDR;							-- update address bus with destination address
 					CPU_STATE := CPU_MTOXAD2;
 				when CPU_MTOXAD2 =>
-					MAB <= RP(3 downto 0)&(DATAREAD(MAB) + RESULT);
-					DATAWRITE(MAB,TEMP_DATA);
-					CPU_STATE := CPU_STORE;
+					FRAB <= RP(3 downto 0)&(DATAREAD(FRAB) + RESULT);	-- update address bus indexed result
+					DATAWRITE(FRAB,TEMP_DATA);					-- prepare to write data on destination (indexed) address
+					CPU_STATE := CPU_STORE;						-- perform store (WR=1)
 				when CPU_XADTOM => 	-- INDEXED 8-BIT ADDRESS TO MEMORY ***************************************************************************
-					MAB <= RP(3 downto 0)&(DATAREAD(MAB) + RESULT);
+					FRAB <= RP(3 downto 0)&(DATAREAD(FRAB) + RESULT);
 					CPU_STATE := CPU_TMA;
 				when CPU_XRTOM =>	-- LEA *******************************************************************************************************
-					TEMP_DATA := DATAREAD(MAB)+RESULT;
-					MAB <= DEST_ADDR;
-					DATAWRITE(MAB,TEMP_DATA);
+					TEMP_DATA := DATAREAD(FRAB)+RESULT;
+					FRAB <= DEST_ADDR;
+					DATAWRITE(FRAB,TEMP_DATA);
 					CPU_STATE := CPU_STORE;
 				when CPU_IMTOIRR =>	-- INDIRECT MEMORY TO INDIRECT ADDRESS READ FROM REGISTER PAIR ***********************************************
-					MAB <= RP(3 downto 0) & DATAREAD(MAB);	-- source address is read from indirect register
+					FRAB <= RP(3 downto 0) & DATAREAD(FRAB);	-- source address is read from indirect register
 					CPU_STATE := CPU_MTOIRR;
 				when CPU_MTOIRR =>	-- MEMORY TO INDIRECT ADDRESS READ FROM REGISTER PAIR ********************************************************
-					TEMP_DATA := DATAREAD(MAB);				-- reads data from the source (MAB) address and store it into TEMP_DATA
-					MAB <= DEST_ADDR;						-- MAB points to the indirect destination register pair
+					TEMP_DATA := DATAREAD(FRAB);				-- reads data from the source (FRAB) address and store it into TEMP_DATA
+					FRAB <= DEST_ADDR;							-- FRAB points to the indirect destination register pair
 					RESULT := x"00";
-					CPU_STATE := CPU_XRRD2;					-- proceed as X indexed register pair destination
+					CPU_STATE := CPU_XRRD2;						-- proceed as X indexed register pair destination
 				when CPU_IRRS =>	-- RR PAIR AS INDIRECT SOURCE ADDRESS ************************************************************************
-					DEST_ADDR16(15 downto 8) := DATAREAD(MAB);
-					MAB <= MAB + 1;
+					DEST_ADDR16(15 downto 8) := DATAREAD(FRAB);
+					FRAB <= FRAB + 1;
 					CPU_STATE := CPU_IRRS2;
 				when CPU_IRRS2 =>
-					DEST_ADDR16(7 downto 0) := DATAREAD(MAB);
-					MAB <= DEST_ADDR16(11 downto 0);
+					DEST_ADDR16(7 downto 0) := DATAREAD(FRAB);
+					FRAB <= DEST_ADDR16(11 downto 0);
 					if (LU_INSTRUCTION='1') then 
 						CPU_STATE:= CPU_TMA;				-- if it is direct addressing mode, go to TMA
 					else
 						CPU_STATE := CPU_IND2;				-- if it is indirect addressing mode, go to IND2
 					end if;
-				when CPU_XRRD =>
-					TEMP_DATA := DATAREAD(MAB);				-- reads data from the source (MAB) address and store it into TEMP_DATA
-					MAB <= DEST_ADDR;
+				when CPU_XRRD =>	-- RR PAIR PLUS OFFSET AS DESTINATION ADDRESS ****************************************************************
+					TEMP_DATA := DATAREAD(FRAB);				-- reads data from the source (FRAB) address and store it into TEMP_DATA
+					FRAB <= DEST_ADDR;
 					CPU_STATE := CPU_XRRD2;
 				when CPU_XRRD2 =>
-					DEST_ADDR16(15 downto 8) := DATAREAD(MAB);
-					MAB <= MAB + 1;
+					DEST_ADDR16(15 downto 8) := DATAREAD(FRAB);
+					FRAB <= FRAB + 1;
 					CPU_STATE := CPU_XRRD3;
 				when CPU_XRRD3 =>
-					DEST_ADDR16(7 downto 0) := DATAREAD(MAB);
-					MAB <= ADDER16(DEST_ADDR16,RESULT)(11 downto 0);
-					DATAWRITE(MAB,TEMP_DATA);
+					DEST_ADDR16(7 downto 0) := DATAREAD(FRAB);
+					FRAB <= ADDER16(DEST_ADDR16,RESULT)(11 downto 0);
+					DATAWRITE(FRAB,TEMP_DATA);
 					CPU_STATE := CPU_STORE;
-				when CPU_XRRS =>
-					DEST_ADDR16(15 downto 8) := DATAREAD(MAB);
-					MAB <= MAB + 1;
+				when CPU_XRRS =>	-- RR PAIR PLUS OFFSET AS SOURCE ADDRESS *********************************************************************
+					DEST_ADDR16(15 downto 8) := DATAREAD(FRAB);
+					FRAB <= FRAB + 1;
 					CPU_STATE := CPU_XRRS2;
 				when CPU_XRRS2 =>
-					DEST_ADDR16(7 downto 0) := DATAREAD(MAB);
-					MAB <= ADDER16(DEST_ADDR16,RESULT)(11 downto 0);
+					DEST_ADDR16(7 downto 0) := DATAREAD(FRAB);
+					FRAB <= ADDER16(DEST_ADDR16,RESULT)(11 downto 0);
 					CPU_STATE := CPU_XRRS3;
 				when CPU_XRRS3 =>
-					TEMP_DATA := DATAREAD(MAB);
-					MAB <= DEST_ADDR;
-					DATAWRITE(MAB,TEMP_DATA);
+					TEMP_DATA := DATAREAD(FRAB);
+					FRAB <= DEST_ADDR;
+					DATAWRITE(FRAB,TEMP_DATA);
 					CPU_STATE := CPU_STORE;
 				when CPU_INDRR =>	-- INDIRECT DESTINATION ADDRESS FOR WORD INSTRUCTIONS (DECW AND INCW) ****************************************
-					MAB <= (RP(3 downto 0) & DATAREAD(MAB))+1;	-- the destination address is given by indirect address
+					FRAB <= (RP(3 downto 0) & DATAREAD(FRAB))+1;	-- the destination address is given by indirect address
 					CPU_STATE := CPU_OMA2;
 				when CPU_ISMD1 =>	-- INDIRECT SOURCE ADDRESS ***********************************************************************************
-					MAB <= RP(3 downto 0) & DATAREAD(MAB);	-- source address is read from indirect register
+					FRAB <= RP(3 downto 0) & DATAREAD(FRAB);	-- source address is read from indirect register
 					CPU_STATE := CPU_TMA;
 				when CPU_IND2 =>	-- READS REGISTER AND PERFORM OPERATION ON AN INDIRECT DESTINATION *******************************************
-					TEMP_DATA := DATAREAD(MAB);				-- reads data from the source (MAB) address and store it into TEMP_DATA
-					MAB <= DEST_ADDR;						-- place the address of the indirect register on MAB
+					TEMP_DATA := DATAREAD(FRAB);				-- reads data from the source (FRAB) address and store it into TEMP_DATA
+					FRAB <= DEST_ADDR;						-- place the address of the indirect register on FRAB
 					CPU_STATE := CPU_IND1;					-- proceed to the indirect
 				when CPU_IND1 =>	-- INDIRECT DESTINATION ADDRESS ******************************************************************************
-					MAB <= RP(3 downto 0) & DATAREAD(MAB);	-- the destination address is given by indirect address
+					FRAB <= RP(3 downto 0) & DATAREAD(FRAB);	-- the destination address is given by indirect address
 					if (LU_INSTRUCTION='0') then CPU_STATE := CPU_OMA;					-- proceed with one memory access
 					else CPU_STATE := CPU_OMA2;											-- proceed with one memory access (logic unit related)
 					end if;
 				when CPU_TMA =>		-- TWO MEMORY ACCESS, READS SOURCE OPERAND FROM MEMORY *******************************************************
-					TEMP_DATA := DATAREAD(MAB);				-- reads data from the source (MAB) address and store it into TEMP_DATA
-					MAB <= DEST_ADDR;						-- place the destination address (DEST_ADDR) on the memory address bus (MAB)
+					TEMP_DATA := DATAREAD(FRAB);			-- reads data from the source (FRAB) address and store it into TEMP_DATA
+					FRAB <= DEST_ADDR;						-- place destination address (DEST_ADDR) on memory address bus (FRAB)
 					CPU_STATE := CPU_OMA;					-- proceed to the last stage
 				when CPU_OMA =>		-- ONE MEMORY ACCESS stage ***********************************************************************************
-					-- this stage performs the TEMP_OP operation between TEMP_DATA and data read from current (MAB) address (destination)
-					RESULT := ALU(TEMP_OP,DATAREAD(MAB),TEMP_DATA,CPU_FLAGS.C);
+					-- this stage performs TEMP_OP operation between TEMP_DATA and data read from current (FRAB) address (destination)
+					RESULT := ALU(TEMP_OP,DATAREAD(FRAB),TEMP_DATA,CPU_FLAGS.C);
 					if (TEMP_OP<ALU_OR) then
 						CPU_FLAGS.C := ALU_FLAGS.C;
 						CPU_FLAGS.V := ALU_FLAGS.V;
@@ -1867,7 +1887,7 @@ begin
 						CPU_FLAGS.V := '0';				
 					end if;
 					if (ALU_NOUPDATE='0') then
-						DATAWRITE(MAB,RESULT);
+						DATAWRITE(FRAB,RESULT);
 						WR <= '1';
 					end if;
 					CPU_STATE := CPU_DECOD;
@@ -1875,8 +1895,8 @@ begin
 						CPU_STATE := CPU_LDW;
 					end if;
 				when CPU_OMA2 =>	-- ONE MEMORY ACCESS stage logic unit related ****************************************************************
-					-- this stage performs the TEMP_OP LU2 operation on data read from current (MAB) address
-					RESULT := LU2(TEMP_OP,DATAREAD(MAB),CPU_FLAGS.D,CPU_FLAGS.H,CPU_FLAGS.C);
+					-- this stage performs TEMP_OP LU2 operation on data read from current (FRAB) address
+					RESULT := LU2(TEMP_OP,DATAREAD(FRAB),CPU_FLAGS.D,CPU_FLAGS.H,CPU_FLAGS.C);
 					if (TEMP_OP=LU2_DEC or TEMP_OP=LU2_INC) then
 						CPU_FLAGS.V := ALU_FLAGS.V;
 						CPU_FLAGS.Z := ALU_FLAGS.Z;
@@ -1902,7 +1922,7 @@ begin
 						CPU_FLAGS.Z := ALU_FLAGS.Z;
 						CPU_FLAGS.S := ALU_FLAGS.S;				
 					end if;
-					DATAWRITE(MAB,RESULT);
+					DATAWRITE(FRAB,RESULT);
 					WR <= '1';
 					if (WORD_DATA='1') then
 						WORD_DATA := '0';
@@ -1911,59 +1931,61 @@ begin
 						CPU_STATE := CPU_DMAB;
 					else CPU_STATE := CPU_DECOD;				
 					end if;
-				when CPU_DMAB =>	-- DECREMENT MEMORY ADDRESS BUS *****************************************************************************
-					MAB <= MAB - 1;
+				when CPU_DMAB =>	-- DECREMENT MEMORY ADDRESS BUS ******************************************************************************
+					FRAB <= FRAB - 1;
 					CPU_STATE := CPU_OMA2;
-				when CPU_LDW =>
-					if (WORD_DATA='0') then
-						TEMP_DATA := DATAREAD(MAB);
-						MAB <= MAB + 1;
-					else
-						DATAWRITE(MAB,TEMP_DATA);
-						WR <= '1';
-					end if;	
+				when CPU_LDW =>		-- LOAD WORD INSTRUCTION *************************************************************************************
+					-- read higher byte from source operand
+					TEMP_DATA := DATAREAD(FRAB);
+					FRAB <= FRAB + 1;
 					CPU_STATE := CPU_LDW2;
 				when CPU_LDW2 =>
-					if (WORD_DATA='0') then
-						RESULT := DATAREAD(MAB);
-						MAB <= DEST_ADDR;
-						WORD_DATA := '1';
-						CPU_STATE := CPU_LDW;
-					else
-						MAB <= MAB + 1;
-						DATAWRITE(MAB,RESULT);
-						CPU_STATE := CPU_STORE;
-					end if;
+					-- read lower byte from source operand
+					RESULT := DATAREAD(FRAB);
+					FRAB <= DEST_ADDR;
+					CPU_STATE := CPU_LDW3;
+				when CPU_LDW3 =>
+					-- write higher byte to destination operand
+					DATAWRITE(FRAB,TEMP_DATA);
+					WR <= '1';
+					CPU_STATE := CPU_LDW4;					
+				when CPU_LDW4 =>
+					-- points FRAB to lower byte of destination address
+					FRAB <= FRAB + 1;					
+					CPU_STATE := CPU_LDW5;
+				when CPU_LDW5 =>
+					DATAWRITE(FRAB,RESULT);
+					CPU_STATE := CPU_STORE;
 				when CPU_LDPTOIM =>	-- LOAD PROGRAM TO INDIRECT MEMORY **************************************************************************
-					TEMP_DATA := DATAREAD(MAB);
+					TEMP_DATA := DATAREAD(FRAB);
 					DEST_ADDR := RP(3 downto 0) & TEMP_DATA;	-- the destination address is read from the indirect address
 					if (WORD_DATA='1') then
 						-- it is a LDCI instruction, so we have to increment the indirect address after the operation
-						DATAWRITE(MAB,TEMP_DATA+1);
+						DATAWRITE(FRAB,TEMP_DATA+1);
 						WR <= '1';
 						CPU_STATE := CPU_LDPTOIM2;
 					else
 						-- it is a LDC instruction, proceed the load instruction
-						MAB <= ADDRESSER4(RESULT(3 downto 0));		-- the source address (program memory) is read from source register pair
+						FRAB <= ADDRESSER4(RESULT(3 downto 0));		-- the source address (program memory) is read from source register pair
 						CPU_STATE := CPU_LDPTOM;
 					end if;
 				when CPU_LDPTOIM2 =>
-					MAB <= ADDRESSER4(RESULT(3 downto 0));		-- the source address (program memory) is read from source register pair
+					FRAB <= ADDRESSER4(RESULT(3 downto 0));		-- the source address (program memory) is read from source register pair
 					CPU_STATE := CPU_LDPTOM;				
 				when CPU_LDPTOM =>	-- LOAD PROGRAM TO MEMORY ***********************************************************************************
-					IAB(15 downto 8) <= DATAREAD(MAB);	-- read the high address from the first register
-					MAB <= MAB + 1;
+					IAB(15 downto 8) <= DATAREAD(FRAB);	-- read the high address from the first register
+					FRAB <= FRAB + 1;
 					CPU_STATE := CPU_LDPTOM2;
 				when CPU_LDPTOM2 =>	
-					IAB(7 downto 0) <= DATAREAD(MAB);	-- read the low address from the second register
-					MAB <= DEST_ADDR;
+					IAB(7 downto 0) <= DATAREAD(FRAB);	-- read the low address from the second register
+					FRAB <= DEST_ADDR;
 					if (LU_INSTRUCTION='0') then 
 						CPU_STATE := CPU_LDPTOM3;		-- if it is a read from program memory
 					else
 						CPU_STATE := CPU_LDMTOP;		-- if it is a write onto program memory
 					end if;
 				when CPU_LDPTOM3 =>	-- READ PROGRAM MEMORY AND STORE INTO RAM *******************************************************************
-					DATAWRITE(MAB,IDB);
+					DATAWRITE(FRAB,IDB);
 					WR <= '1';
 					CAN_FETCH := '1';	-- re-enable fetching
 					FETCH_ADDR := PC;
@@ -1974,11 +1996,11 @@ begin
 					end if;
 				when CPU_LDPTOM4 =>
 					DEST_ADDR := ADDRESSER4(RESULT(3 downto 0));
-					MAB <= DEST_ADDR+1;
+					FRAB <= DEST_ADDR+1;
 					TEMP_OP := LU2_INC;
 					CPU_STATE := CPU_OMA2;
 				when CPU_LDMTOP =>	-- READ RAM AND STORE ONTO PROGRAM MEMORY *******************************************************************
-					PWDB <= DATAREAD(MAB);	-- PWDB receive the content of RAM
+					IWDB <= DATAREAD(FRAB);	-- IWDB receive the content of RAM
 					PGM_WR <= '1';			-- enable program memory write signal
 					CPU_STATE := CPU_LDMTOP2;
 				when CPU_LDMTOP2 =>				
@@ -1989,96 +2011,95 @@ begin
 					if (WORD_DATA='1') then
 						CPU_STATE := CPU_LDPTOM4;
 					end if;
-				when CPU_BIT =>
-					TEMP_DATA := DATAREAD(MAB);
+				when CPU_BIT =>		-- BIT INSTRUCTION *******************************************************************************************
+					TEMP_DATA := DATAREAD(FRAB);
 					TEMP_DATA(to_integer(unsigned(TEMP_OP(2 downto 0)))):=TEMP_OP(3);
-					DATAWRITE(MAB,TEMP_DATA);
+					DATAWRITE(FRAB,TEMP_DATA);
 					WR <= '1';
 					CPU_STATE := CPU_DECOD;
-				when CPU_IBTJ =>
-					MAB <= RP(3 downto 0) & DATAREAD(MAB);
+				when CPU_IBTJ =>	-- INDIRECT BIT TEST JUMP INSTRUCTION ************************************************************************
+					FRAB <= RP(3 downto 0) & DATAREAD(FRAB);
 					CPU_STATE := CPU_BTJ;
-				when CPU_BTJ =>
-					TEMP_DATA := DATAREAD(MAB);
+				when CPU_BTJ =>		-- BIT TEST JUMP INSTRUCTION *********************************************************************************
+					TEMP_DATA := DATAREAD(FRAB);
 					if (TEMP_DATA(to_integer(unsigned(TEMP_OP(2 downto 0))))=TEMP_OP(3)) then
 						PC := ADDER16(PC,RESULT);
 						IQUEUE.FETCH_STATE := F_ADDR;
 					end if; 
 					CPU_STATE := CPU_DECOD;
-				when CPU_DJNZ =>
-					RESULT := LU2(LU2_DEC,DATAREAD(MAB),'0','0','0');
+				when CPU_DJNZ =>	-- DECREMENT AND JUMP IF NOT ZERO INSTRUCTION ****************************************************************
+					RESULT := LU2(LU2_DEC,DATAREAD(FRAB),'0','0','0');
 					if (ALU_FLAGS.Z='0') then	-- result is not zero, then jump relative
 						PC := DEST_ADDR16;
 						IQUEUE.FETCH_STATE := F_ADDR;
 					end if;
-					DATAWRITE(MAB,RESULT);
+					DATAWRITE(FRAB,RESULT);
 					WR <= '1';
 					CPU_STATE := CPU_DECOD;
-				when CPU_INDJUMP =>
-					PC(15 downto 8) := DATAREAD(MAB);
-					MAB <= MAB + 1;
+				when CPU_INDJUMP =>	-- INDIRECT JUMP INSTRUCTION *********************************************************************************
+					PC(15 downto 8) := DATAREAD(FRAB);
+					FRAB <= FRAB + 1;
 					CPU_STATE:= CPU_INDJUMP2;
 				when CPU_INDJUMP2 =>
-					PC(7 downto 0) := DATAREAD(MAB);
+					PC(7 downto 0) := DATAREAD(FRAB);
 					IQUEUE.FETCH_STATE := F_ADDR;
 					CPU_STATE := CPU_DECOD;
-				when CPU_TRAP =>
-					PC(15 downto 8) := DATAREAD(MAB);
-					MAB <= MAB + 1;
+				when CPU_TRAP =>	-- TRAP INSTRUCTION ******************************************************************************************
+					PC(15 downto 8) := DATAREAD(FRAB);
+					FRAB <= FRAB + 1;
 					CPU_STATE:= CPU_TRAP2;
 				when CPU_TRAP2 =>
-					PC(7 downto 0) := DATAREAD(MAB);
+					PC(7 downto 0) := DATAREAD(FRAB);
 					SP := SP - 1;
-					MAB <= SP;
+					FRAB <= SP;
 					IQUEUE.FETCH_STATE := F_ADDR;
 					LU_INSTRUCTION := '1';
 					CPU_STATE := CPU_STACK;
-				when CPU_INDSTACK =>
-					PC(15 downto 8) := DATAREAD(MAB);
-					MAB <= MAB + 1;
+				when CPU_INDSTACK =>	-- INDIRECT CALL INSTRUCTION *****************************************************************************
+					PC(15 downto 8) := DATAREAD(FRAB);
+					FRAB <= FRAB + 1;
 					CPU_STATE:= CPU_INDSTACK2;
 				when CPU_INDSTACK2 =>
-					PC(7 downto 0) := DATAREAD(MAB);
+					PC(7 downto 0) := DATAREAD(FRAB);
 					SP := SP - 1;
-					MAB <= SP;
+					FRAB <= SP;
 					IQUEUE.FETCH_STATE := F_ADDR;
 					CPU_STATE := CPU_STACK;
-				when CPU_VECTOR =>
-					PC(15 downto 8) := IDB;
+				when CPU_VECTOR =>		-- LOAD PC WITH ADDRESS STORED IN PROGRAM MEMORY *********************************************************
+					PC(15 downto 8) := IDB;		-- read high byte of destination address
 					IAB <= IAB + 1;
 					CPU_STATE := CPU_VECTOR2;
 				when CPU_VECTOR2 =>
-					PC(7 downto 0) := IDB;
-					IQUEUE.FETCH_STATE := F_ADDR;
-					CAN_FETCH := '1';
-					if (LU_INSTRUCTION='1') then CPU_STATE := CPU_STACK;
+					PC(7 downto 0) := IDB;		-- read low byte of destination address
+					IQUEUE.FETCH_STATE := F_ADDR;	-- reset queue FSM
+					CAN_FETCH := '1';				-- restart fetching
+					if (INT_FLAG='1') then CPU_STATE := CPU_STACK;
 					else CPU_STATE := CPU_DECOD;
 					end if;
-				when CPU_STACK =>	-- PUSH PC 7:0 INTO THE STACK *******************************************************************************
-					DATAWRITE(MAB,DEST_ADDR16(7 downto 0));
+				when CPU_STACK =>	-- PUSH PC 7:0 INTO THE STACK ********************************************************************************
+					DATAWRITE(FRAB,DEST_ADDR16(7 downto 0));
 					WR <= '1';
 					CPU_STATE := CPU_STACK1;
 				when CPU_STACK1 =>
 					SP := SP - 1;
-					MAB <= SP;				
+					FRAB <= SP;				
 					CPU_STATE := CPU_STACK2;
-				when CPU_STACK2 =>
-					DATAWRITE(MAB,DEST_ADDR16(15 downto 8));
+				when CPU_STACK2 =>	-- PUSH PC 15:8 INTO THE STACK *******************************************************************************
+					DATAWRITE(FRAB,DEST_ADDR16(15 downto 8));
 					WR <= '1';
-					if (LU_INSTRUCTION='1') then
+					if (INT_FLAG='1') then
 						CPU_STATE := CPU_STACK3;
 					else					
 						CPU_STATE := CPU_DECOD;
 					end if;
-				when CPU_STACK3 =>	-- PUSH FLAGS INTO THE STACK *******************************************************************************
+				when CPU_STACK3 =>	-- PUSH FLAGS INTO THE STACK *********************************************************************************
 					SP := SP - 1;
-					MAB <= SP;
-					DATAWRITE(MAB,CPU_FLAGS.C&CPU_FLAGS.Z&CPU_FLAGS.S&CPU_FLAGS.V&CPU_FLAGS.D&CPU_FLAGS.H&CPU_FLAGS.F2&CPU_FLAGS.F1);
-					WR <= '1';
+					FRAB <= SP;
+					DATAWRITE(FRAB,CPU_FLAGS.C&CPU_FLAGS.Z&CPU_FLAGS.S&CPU_FLAGS.V&CPU_FLAGS.D&CPU_FLAGS.H&CPU_FLAGS.F2&CPU_FLAGS.F1);
 					IRQE := '0';
-					CPU_STATE := CPU_DECOD;			
-				when CPU_UNSTACK3 =>
-					TEMP_DATA := DATAREAD(MAB);
+					CPU_STATE := CPU_STORE;			
+				when CPU_UNSTACK3 =>	-- POP FLAGS FROM STACK **********************************************************************************
+					TEMP_DATA := DATAREAD(FRAB);
 					CPU_FLAGS.C := TEMP_DATA(7);
 					CPU_FLAGS.Z := TEMP_DATA(6);
 					CPU_FLAGS.S := TEMP_DATA(5);
@@ -2088,28 +2109,27 @@ begin
 					CPU_FLAGS.F2 := TEMP_DATA(1);
 					CPU_FLAGS.F1 := TEMP_DATA(0);
 					SP := SP + 1;
-					MAB <= SP;
-					CPU_STATE := CPU_UNSTACK;				
-				when CPU_UNSTACK =>
-					DEST_ADDR16(15 downto 8) := DATAREAD(MAB);
+					FRAB <= SP;
+					CPU_STATE := CPU_UNSTACK2;				
+				when CPU_UNSTACK2 =>	-- POP PC(15:8) FROM STACK *******************************************************************************
+					DEST_ADDR16(15 downto 8) := DATAREAD(FRAB);
 					SP := SP + 1;
-					MAB <= SP;
-					CPU_STATE := CPU_UNSTACK2;
-				when CPU_UNSTACK2 =>
-					DEST_ADDR16(7 downto 0) := DATAREAD(MAB);
+					FRAB <= SP;
+					CPU_STATE := CPU_UNSTACK;
+				when CPU_UNSTACK =>		-- POP PC(7:0) FROM STACK ********************************************************************************
+					DEST_ADDR16(7 downto 0) := DATAREAD(FRAB);
 					SP := SP + 1;
 					PC := DEST_ADDR16;
 					IQUEUE.FETCH_STATE := F_ADDR;			
 					CPU_STATE := CPU_DECOD;
-				when CPU_STORE =>
-					WR <= '1';
-					CPU_STATE := CPU_DECOD;
-				when CPU_HALTED =>	-- HALT mode, wait for an interrupt or reset
+				when CPU_STORE =>	-- stores data into memory
+					WR <= '1';		-- enable write signal (it is automatically disabled on CPU_DECOD state)
+					CPU_STATE := CPU_DECOD;	-- proceed to main decoding state
 				when CPU_ILLEGAL =>	-- An illegal opcode was fetched 
-				when CPU_RESET =>
+				when CPU_RESET =>		-- SOFTWARE RESET (TRIGGERED BY OCD RESET BIT) ***********************************************************
 					IAB <= x"0002";
-					MAB <= x"000";
-					PWDB <= x"00";
+					FRAB <= x"000";
+					IWDB <= x"00";
 					SP := x"000";
 					RP := x"00";
 					WR <= '0';
@@ -2131,9 +2151,8 @@ begin
 					CPU_STATE := CPU_VECTOR;			
 				when others =>
 					CPU_STATE := CPU_DECOD;
-				end case;	
-				-- end of the main decoder
-			end if;	-- CKDIVIDER
+			end case;	
+			-- end of the main decoder
 		end if;
 	end process;
 end CPU;
