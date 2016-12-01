@@ -2,9 +2,9 @@
 
 FPz8 mk1 v0.99
 
-Version: 0.99	Nov, 24th, 2016	(changed LDWX instruction, interrupts, condition code function, debugger command processor)
-Version: 0.91	Nov, 15th, 2016
-Version: 0.9	Nov, 11th, 2016
+- Version: 0.99	Nov, 24th, 2016	(changed LDWX instruction, interrupts, condition code function, debugger command processor)
+- Version: 0.91	Nov, 15th, 2016
+- Version: 0.9	Nov, 11th, 2016
 
 FPz8 is a softcore almost 100% object-code compatible with the Z8 encore microcontroller line. Current implementation includes 
 2kb of file registers (RAM), 16kb of program memory (using FPGA RAM), 8 vectored interrupts with programmable priority, 
